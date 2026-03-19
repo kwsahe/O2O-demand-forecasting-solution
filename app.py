@@ -92,20 +92,31 @@ def collect():
 def search():
     try:
         q = request.args.get("q", "")
+        search_type = request.args.get("type", "region")
+
         if not q:
             return jsonify({"status": "error", "message": "검색어를 입력하세요."}), 400
 
-        df = pd.read_csv("data/인테리어_수요점수_결과.csv", encoding="utf-8-sig")
-
-        mask = (
-            df["시도"].str.contains(q, na=False) |
-            df["시군구"].str.contains(q, na=False)
-        )
-        df_filtered = df[mask]
+        if search_type == "apt":
+            # 단지명 검색 — 원본 데이터에서 검색
+            df = pd.read_csv("data/raw_api_collected.csv", encoding="utf-8-sig")
+            mask = df["aptNm"].str.contains(q, na=False)
+            df_filtered = df[mask][["aptNm", "umdNm", "dealAmount", "buildYear", "excluUseAr", "dealYear", "dealMonth"]].copy()
+            df_filtered.columns = ["단지명", "법정동", "거래금액_만원", "건축년도", "전용면적", "년", "월"]
+            df_filtered = df_filtered.head(50)
+        else:
+            # 지역 검색 — 수요 점수 결과에서 검색
+            df = pd.read_csv("data/인테리어_수요점수_결과.csv", encoding="utf-8-sig")
+            mask = (
+                df["시도"].str.contains(q, na=False) |
+                df["시군구"].str.contains(q, na=False)
+            )
+            df_filtered = df[mask]
 
         return jsonify({
             "status": "ok",
             "query": q,
+            "type": search_type,
             "count": len(df_filtered),
             "data": df_filtered.to_dict(orient="records"),
         })
