@@ -12,7 +12,7 @@ app = Flask(__name__)
 
 API_KEY = os.getenv("API_KEY", "")
 
-print("Flask 앱 초기화 완료 ✅")
+print("Flask 앱 초기화 완료")
 
 @app.route("/")
 def index():
