@@ -1,3 +1,5 @@
+<!DOCTYPE html>
+<html lang="ko">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -9,12 +11,17 @@
             --bg:       #080e1a;
             --surface:  #0d1626;
             --surface2: #111e33;
+            --surface3: #162240;
             --border:   #1e3050;
+            --border2:  #253d66;
             --accent:   #f97316;
             --accent2:  #fbbf24;
             --blue:     #38bdf8;
             --green:    #34d399;
+            --purple:   #a78bfa;
+            --red:      #f87171;
             --text:     #e2e8f0;
+            --text2:    #94a3b8;
             --muted:    #64748b;
             --mono:     'DM Mono', monospace;
             --body:     'Noto Sans KR', sans-serif;
@@ -22,262 +29,519 @@
 
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+        html { scroll-behavior: smooth; }
+
         body {
             background: var(--bg);
             color: var(--text);
             font-family: var(--body);
             font-size: 14px;
             min-height: 100vh;
+            line-height: 1.5;
         }
 
         body::before {
             content: '';
             position: fixed; inset: 0;
-            background-image: 
-                linear-gradient(var(--border) 1px, transparaent 1px),
+            background-image:
+                linear-gradient(var(--border) 1px, transparent 1px),
                 linear-gradient(90deg, var(--border) 1px, transparent 1px);
             background-size: 40px 40px;
-            opacity: 0.25;
+            opacity: 0.18;
             pointer-events: none;
-            z-index:  0;
+            z-index: 0;
         }
+
+        /* ── 카드 공통 */
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            transition: border-color .2s, box-shadow .2s;
+        }
+        .card:hover {
+            border-color: var(--border2);
+            box-shadow: 0 0 0 1px var(--border2), 0 8px 32px rgba(0,0,0,.4);
+        }
+
+        /* ── KPI 카드 */
+        .kpi-card {
+            position: relative;
+            overflow: hidden;
+            padding: 20px 22px 18px;
+            cursor: default;
+        }
+        .kpi-card::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg, rgba(255,255,255,.03) 0%, transparent 60%);
+            pointer-events: none;
+        }
+        .kpi-label {
+            font-family: var(--mono);
+            font-size: 10px;
+            letter-spacing: .14em;
+            color: var(--muted);
+            text-transform: uppercase;
+            margin-bottom: 10px;
+        }
+        .kpi-value {
+            font-family: var(--mono);
+            font-size: 30px;
+            font-weight: 500;
+            line-height: 1;
+        }
+        .kpi-sub {
+            margin-top: 10px;
+            font-size: 12px;
+            color: var(--text2);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .kpi-icon {
+            position: absolute;
+            top: 18px;
+            right: 18px;
+            font-size: 22px;
+            opacity: .25;
+        }
+        .kpi-bar {
+            position: absolute;
+            bottom: 0; left: 0; right: 0;
+            height: 3px;
+            border-radius: 0 0 14px 14px;
+        }
+
+        /* ── 필터 버튼 */
+        .filter-btn {
+            font-family: var(--mono);
+            font-size: 11px;
+            letter-spacing: .08em;
+            padding: 6px 14px;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            background: var(--surface);
+            color: var(--text2);
+            cursor: pointer;
+            transition: all .15s;
+            white-space: nowrap;
+        }
+        .filter-btn:hover { border-color: var(--border2); color: var(--text); }
+        .filter-btn.active {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: white;
+        }
+
+        /* ── 검색창 */
+        .search-input {
+            flex: 1;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 10px 16px;
+            color: var(--text);
+            font-family: var(--body);
+            font-size: 13px;
+            outline: none;
+            transition: border-color .15s, box-shadow .15s;
+        }
+        .search-input:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 2px rgba(249,115,22,.15);
+        }
+        .search-input::placeholder { color: var(--muted); }
+
+        /* ── 섹션 레이블 */
+        .section-label {
+            font-family: var(--mono);
+            font-size: 10px;
+            letter-spacing: .14em;
+            color: var(--muted);
+            text-transform: uppercase;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .section-label::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: var(--border);
+        }
+
+        /* ── 테이블 */
+        .rank-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+        .rank-table th {
+            font-family: var(--mono);
+            font-size: 10px;
+            letter-spacing: .1em;
+            text-transform: uppercase;
+            color: var(--muted);
+            font-weight: 400;
+            padding: 0 10px 10px;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+        .rank-table td { padding: 9px 10px; vertical-align: middle; }
+        .rank-table tr { border-bottom: 1px solid rgba(30,48,80,.5); transition: background .12s; }
+        .rank-table tbody tr:hover { background: var(--surface2); }
+        .rank-table tbody tr:last-child { border-bottom: none; }
+
+        /* ── 점수 배지 */
+        .score-badge {
+            display: inline-block;
+            font-family: var(--mono);
+            font-size: 10px;
+            padding: 2px 7px;
+            border-radius: 4px;
+            font-weight: 500;
+        }
+
+        /* ── 애니메이션 */
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: .4; transform: scale(.7); }
+        }
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(14px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes shimmer {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
+
+        .anim-0  { animation: fadeUp .45s ease both 0s; }
+        .anim-1  { animation: fadeUp .45s ease both .05s; }
+        .anim-2  { animation: fadeUp .45s ease both .10s; }
+        .anim-3  { animation: fadeUp .45s ease both .15s; }
+        .anim-4  { animation: fadeUp .45s ease both .20s; }
+        .anim-5  { animation: fadeUp .45s ease both .25s; }
+        .anim-6  { animation: fadeUp .45s ease both .30s; }
+        .anim-7  { animation: fadeUp .45s ease both .35s; }
+
+        /* ── 툴팁 */
+        .tooltip-wrap { position: relative; }
+        .tooltip-wrap:hover .tooltip { display: block; }
+        .tooltip {
+            display: none;
+            position: absolute;
+            bottom: 110%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--surface3);
+            border: 1px solid var(--border2);
+            border-radius: 6px;
+            padding: 6px 10px;
+            font-size: 11px;
+            white-space: nowrap;
+            z-index: 100;
+            color: var(--text);
+            pointer-events: none;
+        }
+
+        /* ── 스크롤바 */
+        ::-webkit-scrollbar { width: 5px; height: 5px; }
+        ::-webkit-scrollbar-track { background: var(--surface); }
+        ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
     </style>
 </head>
-
 <body>
 
-<header style="position:relative;z-index:10;display:flex;align-items:center;justify-content:space-between;padding:18px 32px;border-bottom:1px solid var(--border);background:rgba(8,14,26,.9);backdrop-filter:blur(8px);">
-    <div style="display:flex;align-items:center;gap:12px;">
-        <div style="width:36px;height:36px;background:var(--accent);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px;">🏠</div>
+<!-- ══════════════════════════════ HEADER ══════════════════════════════ -->
+<header id="main-header" style="position:sticky;top:0;z-index:100;display:flex;align-items:center;justify-content:space-between;padding:14px 32px;border-bottom:1px solid var(--border);background:rgba(8,14,26,.92);backdrop-filter:blur(12px);">
+    <div style="display:flex;align-items:center;gap:14px;">
+        <div style="width:34px;height:34px;background:linear-gradient(135deg,var(--accent),var(--accent2));border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0;">🏠</div>
         <div>
-            <div style="font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;">오늘의집 · 인테리어 수요 대시보드</div>
-            <div style="font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:.12em;text-transform:uppercase;margin-top:2px;">O2O Demand Forecasting Pipeline · v1.0</div>
+            <div style="font-size:14px;font-weight:700;letter-spacing:.04em;">오늘의집 · 인테리어 수요 대시보드</div>
+            <div style="font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;margin-top:1px;">O2O Demand Forecasting Pipeline · v1.0</div>
         </div>
     </div>
     <div style="display:flex;align-items:center;gap:20px;">
+        <!-- 데이터 기준 -->
+        <div style="font-family:var(--mono);font-size:10px;color:var(--muted);display:flex;align-items:center;gap:5px;">
+            <span style="color:var(--border2);">DATA</span>
+            <span>2025.01 – 2025.12</span>
+        </div>
+        <!-- 라이브 -->
         <div style="display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:11px;color:var(--green);">
-            <div id="liveDot" style="width:6px;height:6px;border-radius:50%;background:var(--green);animation:pulse 1.8s ease-in-out infinite;"></div>
+            <div style="width:6px;height:6px;border-radius:50%;background:var(--green);animation:pulse 1.8s ease-in-out infinite;"></div>
             LIVE
         </div>
-        <div id="clock" style="font-family:var(--mono);font-size:11px;color:var(--muted);">—</div>
+        <div id="clock" style="font-family:var(--mono);font-size:11px;color:var(--muted);min-width:160px;text-align:right;">—</div>
     </div>
 </header>
 
-<!-- MAIN -->
-<main style="position:relative;z-index:1;padding:28px 32px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:18px;">
-<!-- KPI ROW -->
-<div style="grid-column:1/-1;display:grid;grid-template-columns:repeat(4,1fr);gap:18px;">
-    <div class="kpi-card" style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px 22px;position:relative;overflow:hidden;transition:border-color .2s,transform .2s;animation:fadeUp .5s ease both;">
-        <div style="font-family:var(--mono);font-size:10px;letter-spacing:.14em;color:var(--muted);text-transform:uppercase;margin-bottom:12px;">분석 거래건수</div>
-        <div style="font-family:var(--mono);font-size:32px;font-weight:500;" id="kpi1">—</div>
-        <div style="margin-top:10px;font-size:12px;color:var(--muted);">실거래가 원본 데이터</div>
-        <div style="position:absolute;bottom:0;left:0;right:0;height:3px;background:var(--accent);border-radius:0 0 12px 12px;"></div>
+<!-- ══════════════════════════════ MAIN ══════════════════════════════ -->
+<main style="position:relative;z-index:1;padding:28px 32px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px;">
+
+<!-- ── KPI 행 ── -->
+<div id="kpi-row" style="grid-column:1/-1;display:grid;grid-template-columns:repeat(4,1fr);gap:16px;">
+    <!-- KPI 1 -->
+    <div class="card kpi-card anim-0">
+        <div class="kpi-icon">📊</div>
+        <div class="kpi-label">분석 거래건수</div>
+        <div class="kpi-value" id="kpi1">—</div>
+        <div class="kpi-sub">실거래가 원본 데이터</div>
+        <div class="kpi-bar" style="background:var(--accent);"></div>
     </div>
-    <div class="kpi-card" style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px 22px;position:relative;overflow:hidden;transition:border-color .2s,transform .2s;animation:fadeUp .5s ease both .05s;">
-        <div style="font-family:var(--mono);font-size:10px;letter-spacing:.14em;color:var(--muted);text-transform:uppercase;margin-bottom:12px;">핵심 타겟 지역</div>
-        <div style="font-family:var(--mono);font-size:32px;font-weight:500;" id="kpi2">—</div>
-        <div style="margin-top:10px;font-size:12px;color:var(--muted);">Old Apartment 시군구</div>
-        <div style="position:absolute;bottom:0;left:0;right:0;height:3px;background:var(--blue);border-radius:0 0 12px 12px;"></div>
+    <!-- KPI 2 -->
+    <div class="card kpi-card anim-1">
+        <div class="kpi-icon">📍</div>
+        <div class="kpi-label">핵심 타겟 지역</div>
+        <div class="kpi-value" id="kpi2">—</div>
+        <div class="kpi-sub">Old Apartment 시군구</div>
+        <div class="kpi-bar" style="background:var(--blue);"></div>
     </div>
-    <div class="kpi-card" style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px 22px;position:relative;overflow:hidden;transition:border-color .2s,transform .2s;animation:fadeUp .5s ease both .10s;">
-        <div style="font-family:var(--mono);font-size:10px;letter-spacing:.14em;color:var(--muted);text-transform:uppercase;margin-bottom:12px;">최고 수요 점수</div>
-        <div style="font-family:var(--mono);font-size:32px;font-weight:500;" id="kpi3">—</div>
-        <div style="margin-top:10px;font-size:12px;color:var(--muted);" id="kpi3Region">—</div>
-        <div style="position:absolute;bottom:0;left:0;right:0;height:3px;background:var(--accent2);border-radius:0 0 12px 12px;"></div>
+    <!-- KPI 3 -->
+    <div class="card kpi-card anim-2">
+        <div class="kpi-icon">🏆</div>
+        <div class="kpi-label">최고 수요 점수</div>
+        <div class="kpi-value" id="kpi3">—</div>
+        <div class="kpi-sub" id="kpi3Region">—</div>
+        <div class="kpi-bar" style="background:var(--accent2);"></div>
     </div>
-    <div class="kpi-card" style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px 22px;position:relative;overflow:hidden;transition:border-color .2s,transform .2s;animation:fadeUp .5s ease both .15s;">
-        <div style="font-family:var(--mono);font-size:10px;letter-spacing:.14em;color:var(--muted);text-transform:uppercase;margin-bottom:12px;">평균 수요 점수</div>
-        <div style="font-family:var(--mono);font-size:32px;font-weight:500;" id="kpi4">—</div>
-        <div style="margin-top:10px;font-size:12px;color:var(--muted);">전체 지역 평균</div>
-        <div style="position:absolute;bottom:0;left:0;right:0;height:3px;background:var(--green);border-radius:0 0 12px 12px;"></div>
+    <!-- KPI 4 -->
+    <div class="card kpi-card anim-3">
+        <div class="kpi-icon">📈</div>
+        <div class="kpi-label">평균 수요 점수</div>
+        <div class="kpi-value" id="kpi4">—</div>
+        <div class="kpi-sub">전체 지역 평균</div>
+        <div class="kpi-bar" style="background:var(--green);"></div>
     </div>
 </div>
 
-<!-- 검색 & 필터 -->
-<div style="grid-column:1/-1;display:flex;gap:12px;align-items:center;">
-    <input id="searchInput" type="text" placeholder="지역 또는 단지명 검색 (예: 서초, 래미안...)"
-        style="flex:1;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 16px;color:var(--text);font-family:var(--body);font-size:13px;outline:none;"
-        oninput="handleSearch(this.value)">
-
+<!-- ── 검색 & 필터 행 ── -->
+<div id="search-filter-row" style="grid-column:1/-1;display:flex;flex-direction:column;gap:10px;animation:fadeUp .45s ease both .18s;">
+    <!-- 시도 필터 -->
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+        <span style="font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;white-space:nowrap;">시도 필터</span>
+        <button class="filter-btn active" id="btn-전체" onclick="filterData('전체')">전체</button>
+        <button class="filter-btn" id="btn-서울" onclick="filterData('서울')">서울</button>
+        <button class="filter-btn" id="btn-경기" onclick="filterData('경기')">경기</button>
+        <button class="filter-btn" id="btn-인천" onclick="filterData('인천')">인천</button>
+        <button class="filter-btn" id="btn-부산" onclick="filterData('부산')">부산</button>
+        <button class="filter-btn" id="btn-대구" onclick="filterData('대구')">대구</button>
+        <button class="filter-btn" id="btn-광주" onclick="filterData('광주')">광주</button>
+        <button class="filter-btn" id="btn-대전" onclick="filterData('대전')">대전</button>
+    </div>
+    <!-- 검색 -->
+    <div style="display:flex;gap:10px;align-items:center;">
+        <div style="position:relative;flex:1;">
+            <input id="searchInput" class="search-input" type="text"
+                placeholder="지역 또는 단지명 검색 (예: 서초, 래미안, 마포구...)"
+                oninput="handleSearch(this.value)">
+            <button id="clearBtn" onclick="clearSearch()" style="display:none;position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;line-height:1;padding:0;">✕</button>
+        </div>
+        <div id="searchResultCount" style="font-family:var(--mono);font-size:11px;color:var(--muted);white-space:nowrap;min-width:80px;text-align:right;"></div>
+    </div>
 </div>
 
-<!-- 바 차트 -->
-<div style="grid-column:1/3;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:22px;animation:fadeUp .5s ease both .20s;">
-    <div style="font-family:var(--mono);font-size:10px;letter-spacing:.14em;color:var(--muted);text-transform:uppercase;margin-bottom:16px;">지역별 인테리어 수요 점수 TOP 10</div>
-    <canvas id="barChart" height="220"></canvas>
+<!-- ── 바 차트 ── -->
+<div id="chart-bar-card" class="card anim-4" style="grid-column:1/3;padding:22px;">
+    <div class="section-label">지역별 인테리어 수요 점수 TOP 10</div>
+    <canvas id="barChart" height="210"></canvas>
 </div>
 
-<!-- 파이 차트 -->
-<div style="grid-column:3/4;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:22px;animation:fadeUp .5s ease both .25s;">
-    <div style="font-family:var(--mono);font-size:10px;letter-spacing:.14em;color:var(--muted);text-transform:uppercase;margin-bottom:16px;">아파트 세그먼트 분포</div>
-    <canvas id="pieChart" height="220"></canvas>
+<!-- ── 도넛 차트 ── -->
+<div id="chart-pie-card" class="card anim-5" style="grid-column:3/4;padding:22px;">
+    <div class="section-label">아파트 세그먼트 분포</div>
+    <canvas id="pieChart" height="210"></canvas>
+    <div style="margin-top:14px;font-size:11px;color:var(--muted);text-align:center;">총 <span id="totalTxCount" style="color:var(--text2);font-family:var(--mono);">—</span>건 기준</div>
 </div>
 
-<!-- 랭킹 테이블 -->
-<div style="grid-column:1/-1;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:22px;animation:fadeUp .5s ease both .30s;">
-    <div style="font-family:var(--mono);font-size:10px;letter-spacing:.14em;color:var(--muted);text-transform:uppercase;margin-bottom:16px;">시군구별 수요 점수 랭킹</div>
-    <table style="width:100%;border-collapse:collapse;font-size:12px;">
-        <thead>
-            <tr>
-                <th style="font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:400;padding:0 8px 10px;text-align:left;border-bottom:1px solid var(--border);">#</th>
-                <th style="font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:400;padding:0 8px 10px;text-align:left;border-bottom:1px solid var(--border);">지역</th>
-                <th style="font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:400;padding:0 8px 10px;text-align:left;border-bottom:1px solid var(--border);">거래건수</th>
-                <th style="font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:400;padding:0 8px 10px;text-align:left;border-bottom:1px solid var(--border);">평균거래금액</th>
-                <th style="font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:400;padding:0 8px 10px;text-align:left;border-bottom:1px solid var(--border);">평균노후도</th>
-                <th style="font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:400;padding:0 8px 10px;text-align:left;border-bottom:1px solid var(--border);">수요 점수</th>
-            </tr>
-        </thead>
-        <tbody id="rankBody"></tbody>
-    </table>
+<!-- ── 랭킹 테이블 ── -->
+<div id="rank-table-card" class="card anim-6" style="grid-column:1/-1;padding:22px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+        <div class="section-label" style="margin-bottom:0;flex:1;">시군구별 수요 점수 랭킹</div>
+        <div id="tableInfo" style="font-family:var(--mono);font-size:10px;color:var(--muted);"></div>
+    </div>
+    <div style="overflow-x:auto;">
+        <table class="rank-table">
+            <thead>
+                <tr id="tableHead">
+                    <th style="width:44px;">#</th>
+                    <th>지역</th>
+                    <th>거래건수</th>
+                    <th>평균거래금액</th>
+                    <th>평균노후도</th>
+                    <th style="width:200px;">수요 점수</th>
+                    <th style="width:72px;">등급</th>
+                </tr>
+            </thead>
+            <tbody id="rankBody"></tbody>
+        </table>
+    </div>
 </div>
 
-<!-- 계산 방식 설명 -->
-<!-- 계산 방식 설명 -->
-<div style="grid-column:1/-1;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:28px;animation:fadeUp .5s ease both .35s;">
-    <div style="font-family:var(--mono);font-size:10px;letter-spacing:.14em;color:var(--muted);text-transform:uppercase;margin-bottom:24px;">📐 인테리어 수요 점수란 무엇인가요?</div>
+<!-- ── 점수 설명 ── -->
+<div id="score-explain-card" class="card anim-7" style="grid-column:1/-1;padding:28px 30px;">
+    <div class="section-label">📐 인테리어 수요 점수란 무엇인가요?</div>
 
-    <!-- 한 줄 요약 -->
-    <div style="background:var(--surface2);border-left:3px solid var(--accent);border-radius:0 8px 8px 0;padding:16px 20px;margin-bottom:28px;font-size:14px;line-height:1.7;color:var(--text);">
+    <!-- 한줄 요약 -->
+    <div style="background:var(--surface2);border-left:3px solid var(--accent);border-radius:0 10px 10px 0;padding:16px 20px;margin-bottom:30px;font-size:14px;line-height:1.75;color:var(--text);">
         아파트 실거래 데이터를 분석해 <span style="color:var(--accent);font-weight:500;">"어느 지역에 인테리어 수요가 얼마나 있는가"</span>를 0~100점으로 수치화한 지표예요.<br>
         점수가 높을수록 <span style="color:var(--accent2);">리모델링 수요가 많고, 구매력이 높고, 거래가 활발한 지역</span>이에요.
     </div>
 
-    <!-- STEP 1 -->
-    <div style="margin-bottom:28px;">
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
-            <div style="width:24px;height:24px;background:var(--accent);border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:11px;font-weight:500;flex-shrink:0;">1</div>
-            <div style="font-size:14px;font-weight:500;">핵심 타겟 아파트만 추출해요</div>
-        </div>
-        <div style="margin-left:34px;">
-            <div style="font-size:13px;color:var(--muted);margin-bottom:12px;">건물 연식에 따라 4가지로 분류하고, <span style="color:var(--accent);">15~20년된 아파트(Old Apartment)</span>만 분석해요.</div>
-            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;">
-                <div style="background:var(--surface2);border-radius:8px;padding:12px;text-align:center;opacity:.5;">
-                    <div style="font-size:11px;color:var(--muted);margin-bottom:4px;">New</div>
-                    <div style="font-size:12px;color:var(--text);">0~5년</div>
-                    <div style="font-size:11px;color:var(--muted);margin-top:4px;">가구·소품 수요</div>
-                </div>
-                <div style="background:var(--surface2);border-radius:8px;padding:12px;text-align:center;opacity:.5;">
-                    <div style="font-size:11px;color:var(--muted);margin-bottom:4px;">Mid</div>
-                    <div style="font-size:12px;color:var(--text);">6~14년</div>
-                    <div style="font-size:11px;color:var(--muted);margin-top:4px;">부분 교체 수요</div>
-                </div>
-                <div style="background:rgba(249,115,22,.15);border:1px solid var(--accent);border-radius:8px;padding:12px;text-align:center;">
-                    <div style="font-size:11px;color:var(--accent);margin-bottom:4px;">Old ★ 핵심타겟</div>
-                    <div style="font-size:12px;color:var(--text);font-weight:500;">15~20년</div>
-                    <div style="font-size:11px;color:var(--accent);margin-top:4px;">전면 리모델링 수요</div>
-                </div>
-                <div style="background:var(--surface2);border-radius:8px;padding:12px;text-align:center;opacity:.5;">
-                    <div style="font-size:11px;color:var(--muted);margin-bottom:4px;">Very Old</div>
-                    <div style="font-size:12px;color:var(--text);">21년+</div>
-                    <div style="font-size:11px;color:var(--muted);margin-top:4px;">재건축 검토 단계</div>
-                </div>
-            </div>
-            <div style="margin-top:10px;font-size:12px;color:var(--muted);background:var(--surface2);padding:10px 14px;border-radius:6px;">
-                💡 15~20년 아파트를 핵심 타겟으로 선정한 이유: 1기 신도시 재정비 연식대와 겹쳐 리모델링 관심이 가장 높고, 욕실·주방·바닥재 등 전면 교체 수요가 집중되는 시기예요.
-            </div>
-        </div>
-    </div>
+    <!-- 3단계 -->
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:24px;margin-bottom:28px;">
 
-    <!-- STEP 2 -->
-    <div style="margin-bottom:28px;">
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
-            <div style="width:24px;height:24px;background:var(--accent);border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:11px;font-weight:500;flex-shrink:0;">2</div>
-            <div style="font-size:14px;font-weight:500;">5가지 지표로 지역을 평가해요</div>
-        </div>
-        <div style="margin-left:34px;">
-            <div style="font-size:13px;color:var(--muted);margin-bottom:12px;">각 지표를 0~100점으로 변환한 뒤, 가중치를 곱해서 합산해요.</div>
-            <div style="display:flex;flex-direction:column;gap:10px;">
-                <div style="display:grid;grid-template-columns:120px 40px 1fr auto;align-items:center;gap:12px;background:var(--surface2);border-radius:8px;padding:12px 16px;">
-                    <div style="font-size:13px;color:var(--text);">거래건수</div>
-                    <div style="font-family:var(--mono);font-size:16px;font-weight:500;color:var(--accent);">30%</div>
-                    <div style="font-size:12px;color:var(--muted);">거래가 많을수록 시장이 활발해요. 오늘의집이 도달할 수 있는 고객 수와 직결돼요.</div>
-                    <div style="font-size:11px;color:var(--accent);background:rgba(249,115,22,.1);padding:4px 8px;border-radius:4px;white-space:nowrap;">가장 중요</div>
+        <!-- STEP 1 -->
+        <div>
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+                <div style="width:26px;height:26px;background:var(--accent);border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:11px;font-weight:500;flex-shrink:0;">1</div>
+                <div style="font-size:14px;font-weight:500;">핵심 타겟 아파트 추출</div>
+            </div>
+            <div style="font-size:12px;color:var(--text2);margin-bottom:12px;">건물 연식에 따라 4단계로 분류하고, <span style="color:var(--accent);">15~20년된 아파트(Old)</span>만 분석해요.</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
+                <div style="background:var(--surface2);border-radius:8px;padding:10px;text-align:center;opacity:.45;">
+                    <div style="font-size:10px;color:var(--muted);">New</div>
+                    <div style="font-size:12px;font-weight:500;margin:3px 0;">0~5년</div>
+                    <div style="font-size:10px;color:var(--muted);">가구·소품 수요</div>
                 </div>
-                <div style="display:grid;grid-template-columns:120px 40px 1fr auto;align-items:center;gap:12px;background:var(--surface2);border-radius:8px;padding:12px 16px;">
-                    <div style="font-size:13px;color:var(--text);">거래금액</div>
-                    <div style="font-family:var(--mono);font-size:16px;font-weight:500;color:var(--accent2);">25%</div>
-                    <div style="font-size:12px;color:var(--muted);">비싼 집일수록 인테리어에 더 많은 돈을 써요. 고단가 시공 상품 판매 가능성이 높아요.</div>
-                    <div style="font-size:11px;color:var(--accent2);background:rgba(251,191,36,.1);padding:4px 8px;border-radius:4px;white-space:nowrap;">구매력</div>
+                <div style="background:var(--surface2);border-radius:8px;padding:10px;text-align:center;opacity:.45;">
+                    <div style="font-size:10px;color:var(--muted);">Mid</div>
+                    <div style="font-size:12px;font-weight:500;margin:3px 0;">6~14년</div>
+                    <div style="font-size:10px;color:var(--muted);">부분 교체 수요</div>
                 </div>
-                <div style="display:grid;grid-template-columns:120px 40px 1fr auto;align-items:center;gap:12px;background:var(--surface2);border-radius:8px;padding:12px 16px;">
-                    <div style="font-size:13px;color:var(--text);">노후도</div>
-                    <div style="font-family:var(--mono);font-size:16px;font-weight:500;color:var(--blue);">20%</div>
-                    <div style="font-size:12px;color:var(--muted);">같은 핵심 타겟(15~20년) 안에서도 더 오래된 집이 리모델링이 더 시급해요.</div>
-                    <div style="font-size:11px;color:var(--blue);background:rgba(56,189,248,.1);padding:4px 8px;border-radius:4px;white-space:nowrap;">시급성</div>
+                <div style="background:rgba(249,115,22,.12);border:1px solid rgba(249,115,22,.35);border-radius:8px;padding:10px;text-align:center;grid-column:1/-1;">
+                    <div style="font-size:10px;color:var(--accent);">Old ★ 핵심타겟</div>
+                    <div style="font-size:13px;font-weight:600;color:var(--text);margin:3px 0;">15~20년</div>
+                    <div style="font-size:10px;color:var(--accent);">전면 리모델링 수요</div>
                 </div>
-                <div style="display:grid;grid-template-columns:120px 40px 1fr auto;align-items:center;gap:12px;background:var(--surface2);border-radius:8px;padding:12px 16px;">
-                    <div style="font-size:13px;color:var(--text);">전용면적</div>
-                    <div style="font-family:var(--mono);font-size:16px;font-weight:500;color:var(--green);">15%</div>
-                    <div style="font-size:12px;color:var(--muted);">넓은 집일수록 시공 범위가 넓어요. 33평 vs 10평은 시공비 차이가 3배 이상 나요.</div>
-                    <div style="font-size:11px;color:var(--green);background:rgba(52,211,153,.1);padding:4px 8px;border-radius:4px;white-space:nowrap;">시공규모</div>
-                </div>
-                <div style="display:grid;grid-template-columns:120px 40px 1fr auto;align-items:center;gap:12px;background:var(--surface2);border-radius:8px;padding:12px 16px;">
-                    <div style="font-size:13px;color:var(--text);">신규입주</div>
-                    <div style="font-family:var(--mono);font-size:16px;font-weight:500;color:#a78bfa;">10%</div>
-                    <div style="font-size:12px;color:var(--muted);">새로 입주하는 세대도 인테리어 수요가 있어요. 단, 리모델링보다 규모가 작아서 가중치가 낮아요.</div>
-                    <div style="font-size:11px;color:#a78bfa;background:rgba(167,139,250,.1);padding:4px 8px;border-radius:4px;white-space:nowrap;">신규수요</div>
+                <div style="background:var(--surface2);border-radius:8px;padding:10px;text-align:center;opacity:.45;grid-column:1/-1;">
+                    <div style="font-size:10px;color:var(--muted);">Very Old</div>
+                    <div style="font-size:12px;font-weight:500;margin:3px 0;">21년+</div>
+                    <div style="font-size:10px;color:var(--muted);">재건축 검토 단계</div>
                 </div>
             </div>
+            <div style="margin-top:10px;font-size:11px;color:var(--muted);background:var(--surface2);padding:10px 12px;border-radius:6px;line-height:1.6;">
+                💡 1기 신도시 재정비 연식대와 겹쳐 리모델링 관심이 가장 높고, 욕실·주방·바닥재 전면 교체 수요가 집중되는 시기예요.
+            </div>
         </div>
-    </div>
 
-    <!-- STEP 3 -->
-    <div style="margin-bottom:20px;">
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
-            <div style="width:24px;height:24px;background:var(--accent);border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:11px;font-weight:500;flex-shrink:0;">3</div>
-            <div style="font-size:14px;font-weight:500;">점수를 계산하는 방법</div>
-        </div>
-        <div style="margin-left:34px;">
-            <div style="font-size:13px;color:var(--muted);margin-bottom:12px;">각 지표의 단위가 다르기 때문에 (건수, 만원, 년, ㎡...) 모두 0~100점으로 통일한 뒤 합산해요.</div>
-            <div style="background:var(--surface2);border-radius:8px;padding:16px 20px;margin-bottom:12px;">
-                <div style="font-size:12px;color:var(--muted);margin-bottom:8px;">예시: 거래건수 정규화</div>
-                <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;text-align:center;">
+        <!-- STEP 2 -->
+        <div>
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+                <div style="width:26px;height:26px;background:var(--accent);border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:11px;font-weight:500;flex-shrink:0;">2</div>
+                <div style="font-size:14px;font-weight:500;">5가지 지표로 평가</div>
+            </div>
+            <div style="font-size:12px;color:var(--text2);margin-bottom:12px;">각 지표를 0~100점으로 변환한 뒤, 가중치를 곱해 합산해요.</div>
+            <div style="display:flex;flex-direction:column;gap:7px;">
+                <div style="background:var(--surface2);border-radius:7px;padding:10px 12px;display:flex;align-items:center;gap:10px;">
+                    <div style="font-family:var(--mono);font-size:15px;font-weight:500;color:var(--accent);min-width:36px;">30%</div>
                     <div>
-                        <div style="font-size:11px;color:var(--muted);margin-bottom:4px;">가장 적은 지역</div>
-                        <div style="font-family:var(--mono);font-size:18px;color:var(--text);">150건</div>
-                        <div style="font-family:var(--mono);font-size:14px;color:var(--muted);">→ 0점</div>
+                        <div style="font-size:12px;color:var(--text);font-weight:500;">거래건수</div>
+                        <div style="font-size:11px;color:var(--muted);">시장 활성도, 도달 고객 수</div>
+                    </div>
+                    <div class="score-badge" style="margin-left:auto;background:rgba(249,115,22,.12);color:var(--accent);">최중요</div>
+                </div>
+                <div style="background:var(--surface2);border-radius:7px;padding:10px 12px;display:flex;align-items:center;gap:10px;">
+                    <div style="font-family:var(--mono);font-size:15px;font-weight:500;color:var(--accent2);min-width:36px;">25%</div>
+                    <div>
+                        <div style="font-size:12px;color:var(--text);font-weight:500;">거래금액</div>
+                        <div style="font-size:11px;color:var(--muted);">구매력, 고단가 시공 가능성</div>
+                    </div>
+                    <div class="score-badge" style="margin-left:auto;background:rgba(251,191,36,.12);color:var(--accent2);">구매력</div>
+                </div>
+                <div style="background:var(--surface2);border-radius:7px;padding:10px 12px;display:flex;align-items:center;gap:10px;">
+                    <div style="font-family:var(--mono);font-size:15px;font-weight:500;color:var(--blue);min-width:36px;">20%</div>
+                    <div>
+                        <div style="font-size:12px;color:var(--text);font-weight:500;">노후도</div>
+                        <div style="font-size:11px;color:var(--muted);">리모델링 시급성</div>
+                    </div>
+                    <div class="score-badge" style="margin-left:auto;background:rgba(56,189,248,.12);color:var(--blue);">시급성</div>
+                </div>
+                <div style="background:var(--surface2);border-radius:7px;padding:10px 12px;display:flex;align-items:center;gap:10px;">
+                    <div style="font-family:var(--mono);font-size:15px;font-weight:500;color:var(--green);min-width:36px;">15%</div>
+                    <div>
+                        <div style="font-size:12px;color:var(--text);font-weight:500;">전용면적</div>
+                        <div style="font-size:11px;color:var(--muted);">시공 규모, 단가 결정</div>
+                    </div>
+                    <div class="score-badge" style="margin-left:auto;background:rgba(52,211,153,.12);color:var(--green);">시공규모</div>
+                </div>
+                <div style="background:var(--surface2);border-radius:7px;padding:10px 12px;display:flex;align-items:center;gap:10px;">
+                    <div style="font-family:var(--mono);font-size:15px;font-weight:500;color:var(--purple);min-width:36px;">10%</div>
+                    <div>
+                        <div style="font-size:12px;color:var(--text);font-weight:500;">신규입주</div>
+                        <div style="font-size:11px;color:var(--muted);">신규 세대 인테리어 수요</div>
+                    </div>
+                    <div class="score-badge" style="margin-left:auto;background:rgba(167,139,250,.12);color:var(--purple);">신규수요</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- STEP 3 -->
+        <div>
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+                <div style="width:26px;height:26px;background:var(--accent);border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:11px;font-weight:500;flex-shrink:0;">3</div>
+                <div style="font-size:14px;font-weight:500;">점수 계산 방식</div>
+            </div>
+            <div style="font-size:12px;color:var(--text2);margin-bottom:12px;">단위가 다른 지표를 0~100점으로 통일한 뒤 합산해요.</div>
+            <!-- 계산식 -->
+            <div style="background:var(--surface2);border-radius:8px;padding:14px 16px;margin-bottom:10px;">
+                <div style="font-size:11px;color:var(--muted);margin-bottom:8px;">최종 점수 계산식</div>
+                <div style="font-family:var(--mono);font-size:12px;color:var(--text);line-height:2.1;">
+                    수요점수 =<br>
+                    &nbsp;&nbsp;거래건수점수 × <span style="color:var(--accent);">0.30</span><br>
+                    &nbsp;+ 거래금액점수 × <span style="color:var(--accent2);">0.25</span><br>
+                    &nbsp;+ 노후도점수 &nbsp;&nbsp;× <span style="color:var(--blue);">0.20</span><br>
+                    &nbsp;+ 면적점수 &nbsp;&nbsp;&nbsp;&nbsp;× <span style="color:var(--green);">0.15</span><br>
+                    &nbsp;+ 신규입주점수 × <span style="color:var(--purple);">0.10</span>
+                </div>
+            </div>
+            <!-- 예시 -->
+            <div style="background:var(--surface2);border-radius:8px;padding:12px 16px;margin-bottom:14px;">
+                <div style="font-size:11px;color:var(--muted);margin-bottom:8px;">Min–Max 정규화 예시 (거래건수)</div>
+                <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;text-align:center;">
+                    <div>
+                        <div style="font-size:10px;color:var(--muted);">최소</div>
+                        <div style="font-family:var(--mono);font-size:16px;margin:3px 0;">150건</div>
+                        <div style="font-family:var(--mono);font-size:12px;color:var(--muted);">→ 0점</div>
                     </div>
                     <div>
-                        <div style="font-size:11px;color:var(--muted);margin-bottom:4px;">중간 지역</div>
-                        <div style="font-family:var(--mono);font-size:18px;color:var(--text);">800건</div>
-                        <div style="font-family:var(--mono);font-size:14px;color:var(--muted);">→ 44점</div>
+                        <div style="font-size:10px;color:var(--muted);">중간</div>
+                        <div style="font-family:var(--mono);font-size:16px;margin:3px 0;">800건</div>
+                        <div style="font-family:var(--mono);font-size:12px;color:var(--muted);">→ 44점</div>
                     </div>
                     <div>
-                        <div style="font-size:11px;color:var(--muted);margin-bottom:4px;">가장 많은 지역</div>
-                        <div style="font-family:var(--mono);font-size:18px;color:var(--text);">1,606건</div>
-                        <div style="font-family:var(--mono);font-size:14px;color:var(--muted);">→ 100점</div>
+                        <div style="font-size:10px;color:var(--muted);">최대</div>
+                        <div style="font-family:var(--mono);font-size:16px;margin:3px 0;">1,606건</div>
+                        <div style="font-family:var(--mono);font-size:12px;color:var(--muted);">→ 100점</div>
                     </div>
                 </div>
             </div>
-            <div style="background:var(--surface2);border-radius:8px;padding:14px 20px;">
-                <div style="font-size:12px;color:var(--muted);margin-bottom:8px;">최종 점수 계산식</div>
-                <div style="font-family:var(--mono);font-size:13px;color:var(--text);line-height:2;">
-                    수요점수 = (거래건수점수 × 0.30) + (거래금액점수 × 0.25)<br>
-                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;+ (노후도점수 × 0.20) + (면적점수 × 0.15)<br>
-                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;+ (신규입주점수 × 0.10)
+            <!-- 등급 -->
+            <div style="display:flex;flex-direction:column;gap:7px;">
+                <div style="background:rgba(249,115,22,.1);border:1px solid rgba(249,115,22,.25);border-radius:7px;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;">
+                    <div style="font-family:var(--mono);font-size:14px;color:var(--accent);font-weight:500;">60 – 100</div>
+                    <div>
+                        <div style="font-size:12px;color:var(--text);">최우선 타겟</div>
+                        <div style="font-size:10px;color:var(--muted);">마케팅 예산 집중</div>
+                    </div>
+                    <div class="score-badge" style="background:rgba(249,115,22,.15);color:var(--accent);">S등급</div>
                 </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- 결과 해석 -->
-    <div style="border-top:1px solid var(--border);padding-top:20px;">
-        <div style="font-size:13px;color:var(--muted);margin-bottom:12px;">점수 해석 가이드</div>
-        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;">
-            <div style="background:rgba(249,115,22,.1);border:1px solid rgba(249,115,22,.3);border-radius:8px;padding:14px;text-align:center;">
-                <div style="font-family:var(--mono);font-size:20px;color:var(--accent);margin-bottom:6px;">60~100점</div>
-                <div style="font-size:12px;color:var(--text);margin-bottom:4px;">최우선 타겟 지역</div>
-                <div style="font-size:11px;color:var(--muted);">마케팅 예산 집중 투자, 파트너 시공사 우선 배치</div>
-            </div>
-            <div style="background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.3);border-radius:8px;padding:14px;text-align:center;">
-                <div style="font-family:var(--mono);font-size:20px;color:var(--accent2);margin-bottom:6px;">30~59점</div>
-                <div style="font-size:12px;color:var(--text);margin-bottom:4px;">중간 타겟 지역</div>
-                <div style="font-size:11px;color:var(--muted);">수요 모니터링 유지, 선별적 마케팅 집행</div>
-            </div>
-            <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:14px;text-align:center;">
-                <div style="font-family:var(--mono);font-size:20px;color:var(--muted);margin-bottom:6px;">0~29점</div>
-                <div style="font-size:12px;color:var(--text);margin-bottom:4px;">관찰 지역</div>
-                <div style="font-size:11px;color:var(--muted);">현 시점 투자 보류, 추이 관찰</div>
+                <div style="background:rgba(251,191,36,.07);border:1px solid rgba(251,191,36,.2);border-radius:7px;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;">
+                    <div style="font-family:var(--mono);font-size:14px;color:var(--accent2);font-weight:500;">30 – 59</div>
+                    <div>
+                        <div style="font-size:12px;color:var(--text);">중간 타겟</div>
+                        <div style="font-size:10px;color:var(--muted);">선별적 마케팅</div>
+                    </div>
+                    <div class="score-badge" style="background:rgba(251,191,36,.12);color:var(--accent2);">A등급</div>
+                </div>
+                <div style="background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;">
+                    <div style="font-family:var(--mono);font-size:14px;color:var(--muted);font-weight:500;">0 – 29</div>
+                    <div>
+                        <div style="font-size:12px;color:var(--text);">관찰 지역</div>
+                        <div style="font-size:10px;color:var(--muted);">투자 보류</div>
+                    </div>
+                    <div class="score-badge" style="background:var(--surface3);color:var(--muted);">B등급</div>
+                </div>
             </div>
         </div>
     </div>
@@ -285,103 +549,139 @@
 
 </main>
 
-<style>
-@keyframes pulse {
-    0%, 100% { opacity:1; transform:scale(1); }
-    50% { opacity:.4; transform:scale(.7); }
-}
-@keyframes fadeUp {
-    from { opacity:0; transform:translateY(16px); }
-    to   { opacity:1; transform:translateY(0); }
-}
-</style>
+<!-- ══════════════════════════════ FOOTER ══════════════════════════════ -->
+<footer style="position:relative;z-index:1;padding:20px 32px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;background:rgba(8,14,26,.6);">
+    <div style="font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;">오늘의집 · O2O Demand Forecasting Solution</div>
+    <div style="font-family:var(--mono);font-size:10px;color:var(--muted);">데이터 출처: 국토교통부 실거래가 공개시스템 · 한국부동산원</div>
+</footer>
 
+<!-- ══════════════════════════════ SCRIPT ══════════════════════════════ -->
 <script>
 // ── 시계
 function updateClock() {
     const now = new Date();
     document.getElementById('clock').textContent =
         now.toLocaleDateString('ko-KR') + ' ' +
-        now.toLocaleTimeString('ko-KR', {hour:'2-digit', minute:'2-digit', second:'2-digit'});
+        now.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 }
-updateClock(); setInterval(updateClock, 1000);
+updateClock();
+setInterval(updateClock, 1000);
 
-// ── 전역 데이터
+// ── 전역 상태
 let allData = [];
-let barChart = null;
-let pieChart = null;
+let filteredData = [];
+let currentSido = '전체';
+let barChartInst = null;
+let pieChartInst = null;
+
+const PIE_TOTALS = [8245, 13866, 10892, 46588];
 
 // ── Chart.js 기본 설정
 Chart.defaults.color = '#64748b';
 Chart.defaults.font.family = "'DM Mono', monospace";
 
-// ── API에서 데이터 로드
+// ── 데이터 로드
 async function loadData() {
     try {
-        const res = await fetch('/api/demand');
+        const res = await fetch('/api/demand?top=100');
         const json = await res.json();
         allData = json.data;
+        filteredData = allData;
         renderAll(allData);
-    } catch(e) {
+    } catch (e) {
         console.error('데이터 로드 실패:', e);
     }
 }
 
-// ── 전체 렌더링
+// ── 전체 렌더
 function renderAll(data) {
     updateKPI(data);
     updateBarChart(data.slice(0, 10));
     updatePieChart();
     updateTable(data);
+    document.getElementById('tableInfo').textContent = `${data.length}개 지역`;
+    document.getElementById('totalTxCount').textContent =
+        PIE_TOTALS.reduce((a, b) => a + b, 0).toLocaleString();
 }
 
-// ── KPI 업데이트
+// ── KPI
 function updateKPI(data) {
-    document.getElementById('kpi1').textContent = data.reduce((s, d) => s + d.거래건수, 0).toLocaleString() + '건';
+    document.getElementById('kpi1').textContent =
+        data.reduce((s, d) => s + (d.거래건수 || 0), 0).toLocaleString() + '건';
     document.getElementById('kpi2').textContent = data.length + '개';
-    document.getElementById('kpi3').textContent = data[0]?.인테리어_수요점수?.toFixed(1) || '—';
-    document.getElementById('kpi3Region').textContent = (data[0]?.시도 || '') + ' ' + (data[0]?.시군구 || '');
-    const avg = data.reduce((s, d) => s + d.인테리어_수요점수, 0) / data.length;
-    document.getElementById('kpi4').textContent = avg.toFixed(1);
+    document.getElementById('kpi3').textContent =
+        data[0]?.인테리어_수요점수?.toFixed(1) ?? '—';
+    document.getElementById('kpi3Region').textContent =
+        (data[0]?.시도 || '') + ' ' + (data[0]?.시군구 || '');
+    const avg = data.reduce((s, d) => s + (d.인테리어_수요점수 || 0), 0) / data.length;
+    document.getElementById('kpi4').textContent = isNaN(avg) ? '—' : avg.toFixed(1);
 }
 
 // ── 바 차트
 function updateBarChart(data) {
     const ctx = document.getElementById('barChart').getContext('2d');
-    if (barChart) barChart.destroy();
-    barChart = new Chart(ctx, {
+    if (barChartInst) barChartInst.destroy();
+    const scores = data.map(d => d.인테리어_수요점수);
+    const maxScore = Math.max(...scores);
+    barChartInst = new Chart(ctx, {
         type: 'bar',
         data: {
-            labels: data.map(d => d.시도 + ' ' + d.시군구),
+            labels: data.map(d => d.시도.replace('특별시','').replace('광역시','').replace('도','') + ' ' + d.시군구),
             datasets: [{
                 label: '수요 점수',
-                data: data.map(d => d.인테리어_수요점수),
-                backgroundColor: data.map((_, i) => `rgba(249,115,22,${0.9 - i * 0.06})`),
+                data: scores,
+                backgroundColor: scores.map(s => {
+                    if (s >= 60) return 'rgba(249,115,22,.85)';
+                    if (s >= 30) return 'rgba(251,191,36,.75)';
+                    return 'rgba(56,189,248,.6)';
+                }),
                 borderRadius: 5,
+                borderSkipped: false,
             }]
         },
         options: {
             responsive: true,
-            plugins: { legend: { display: false } },
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: '#0d1626',
+                    borderColor: '#1e3050',
+                    borderWidth: 1,
+                    titleColor: '#e2e8f0',
+                    bodyColor: '#94a3b8',
+                    padding: 10,
+                    callbacks: {
+                        label: ctx => `수요 점수: ${ctx.raw.toFixed(1)}`
+                    }
+                }
+            },
             scales: {
-                x: { grid: { color: 'rgba(30,48,80,.5)' }, ticks: { font: { size: 11 } } },
-                y: { grid: { color: 'rgba(30,48,80,.5)' }, ticks: { font: { size: 11 } }, min: 0 }
+                x: {
+                    grid: { color: 'rgba(30,48,80,.4)', drawBorder: false },
+                    ticks: { font: { size: 10 }, maxRotation: 30 }
+                },
+                y: {
+                    grid: { color: 'rgba(30,48,80,.4)', drawBorder: false },
+                    ticks: { font: { size: 10 } },
+                    min: 0,
+                    max: Math.ceil(maxScore / 10) * 10 + 5
+                }
             }
         }
     });
 }
 
-// ── 파이 차트
+// ── 도넛 차트
 function updatePieChart() {
     const ctx = document.getElementById('pieChart').getContext('2d');
-    if (pieChart) pieChart.destroy();
-    pieChart = new Chart(ctx, {
+    if (pieChartInst) pieChartInst.destroy();
+    pieChartInst = new Chart(ctx, {
         type: 'doughnut',
         data: {
             labels: ['New (0~5년)', 'Mid (6~14년)', 'Old ★ (15~20년)', 'Very Old (21년+)'],
             datasets: [{
-                data: [8245, 13866, 10892, 46588],
-                backgroundColor: ['#34d399','#38bdf8','#f97316','#1e3050'],
+                data: PIE_TOTALS,
+                backgroundColor: ['#34d399', '#38bdf8', '#f97316', '#253d66'],
                 borderColor: '#080e1a',
                 borderWidth: 3,
             }]
@@ -390,129 +690,164 @@ function updatePieChart() {
             responsive: true,
             cutout: '62%',
             plugins: {
-                legend: { position: 'bottom', labels: { padding: 14, font: { size: 11 } } }
+                legend: {
+                    position: 'bottom',
+                    labels: { padding: 12, font: { size: 11 }, boxWidth: 10, boxHeight: 10 }
+                },
+                tooltip: {
+                    backgroundColor: '#0d1626',
+                    borderColor: '#1e3050',
+                    borderWidth: 1,
+                    callbacks: {
+                        label: ctx => `${ctx.label}: ${ctx.raw.toLocaleString()}건`
+                    }
+                }
             }
         }
     });
 }
 
+// ── 점수 등급
+function scoreTier(score) {
+    if (score >= 60) return { label: 'S', bg: 'rgba(249,115,22,.15)', color: '#f97316' };
+    if (score >= 30) return { label: 'A', bg: 'rgba(251,191,36,.12)', color: '#fbbf24' };
+    return { label: 'B', bg: 'rgba(100,116,139,.12)', color: '#64748b' };
+}
+
+// ── 테이블 헤더 초기화
+function resetTableHead() {
+    document.getElementById('tableHead').innerHTML = `
+        <th style="width:44px;">#</th>
+        <th>지역</th>
+        <th>거래건수</th>
+        <th>평균거래금액</th>
+        <th>평균노후도</th>
+        <th style="width:200px;">수요 점수</th>
+        <th style="width:72px;">등급</th>
+    `;
+}
+
 // ── 랭킹 테이블
 function updateTable(data) {
+    resetTableHead();
     const tbody = document.getElementById('rankBody');
     tbody.innerHTML = '';
     const maxScore = data[0]?.인테리어_수요점수 || 100;
     data.forEach((d, i) => {
         const pct = (d.인테리어_수요점수 / maxScore * 100).toFixed(1);
+        const tier = scoreTier(d.인테리어_수요점수);
+        const rankLabel = i < 3
+            ? `<span style="font-size:14px;">${['🥇','🥈','🥉'][i]}</span>`
+            : `<span style="color:var(--muted);">${i + 1}</span>`;
         const tr = document.createElement('tr');
-        tr.style.cssText = 'border-bottom:1px solid rgba(30,48,80,.5);transition:background .15s;';
-        tr.onmouseover = () => tr.style.background = '#111e33';
-        tr.onmouseout  = () => tr.style.background = '';
         tr.innerHTML = `
-            <td style="padding:9px 8px;font-family:var(--mono);font-size:11px;color:${i<3?'var(--accent)':'var(--muted)'};">
-                ${i < 3 ? ['①','②','③'][i] : i+1}
-            </td>
-            <td style="padding:9px 8px;">${d.시도} ${d.시군구}</td>
-            <td style="padding:9px 8px;font-family:var(--mono);color:var(--muted);">${d.거래건수?.toLocaleString()}건</td>
-            <td style="padding:9px 8px;font-family:var(--mono);color:var(--muted);">${Math.round(d.평균거래금액_만원)?.toLocaleString()}만</td>
-            <td style="padding:9px 8px;font-family:var(--mono);color:var(--muted);">${d.평균노후도_년}년</td>
-            <td style="padding:9px 8px;">
-                <div style="display:flex;align-items:center;gap:7px;">
+            <td style="font-family:var(--mono);font-size:11px;">${rankLabel}</td>
+            <td style="font-weight:${i < 3 ? '500' : '400'};">${d.시도} ${d.시군구}</td>
+            <td style="font-family:var(--mono);color:var(--text2);">${(d.거래건수 || 0).toLocaleString()}건</td>
+            <td style="font-family:var(--mono);color:var(--text2);">${Math.round(d.평균거래금액_만원 || 0).toLocaleString()}만</td>
+            <td style="font-family:var(--mono);color:var(--text2);">${d.평균노후도_년}년</td>
+            <td>
+                <div style="display:flex;align-items:center;gap:8px;">
                     <div style="flex:1;height:5px;background:var(--surface2);border-radius:3px;overflow:hidden;">
                         <div style="height:100%;width:${pct}%;background:linear-gradient(90deg,var(--accent),var(--accent2));border-radius:3px;transition:width 1s ease;"></div>
                     </div>
-                    <div style="font-family:var(--mono);font-size:11px;color:var(--accent2);min-width:34px;text-align:right;">${d.인테리어_수요점수}</div>
+                    <div style="font-family:var(--mono);font-size:11px;color:var(--accent2);min-width:32px;text-align:right;">${d.인테리어_수요점수}</div>
                 </div>
-            </td>`;
+            </td>
+            <td><span class="score-badge" style="background:${tier.bg};color:${tier.color};">${tier.label}등급</span></td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+// ── 단지 테이블
+function updateAptTable(data) {
+    document.getElementById('tableHead').innerHTML = `
+        <th style="width:44px;">#</th>
+        <th>단지명</th>
+        <th>법정동</th>
+        <th>거래금액</th>
+        <th>건축년도</th>
+        <th>전용면적</th>
+        <th>거래시기</th>
+    `;
+    const tbody = document.getElementById('rankBody');
+    tbody.innerHTML = '';
+    data.forEach((d, i) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td style="font-family:var(--mono);font-size:11px;color:var(--muted);">${i + 1}</td>
+            <td style="font-weight:500;">${d.단지명}</td>
+            <td style="font-family:var(--mono);color:var(--text2);">${d.법정동}</td>
+            <td style="font-family:var(--mono);color:var(--accent2);">${Number(String(d.거래금액_만원 || '0').replace(/,/g,'').trim()).toLocaleString()}만</td>
+            <td style="font-family:var(--mono);color:var(--text2);">${d.건축년도}년</td>
+            <td style="font-family:var(--mono);color:var(--text2);">${d.전용면적}㎡</td>
+            <td style="font-family:var(--mono);color:var(--muted);">${d.년}.${String(d.월).padStart(2, '0')}</td>
+        `;
         tbody.appendChild(tr);
     });
 }
 
 // ── 검색
-function resetTableHeader() {
-    document.querySelector('thead tr').innerHTML = `
-        <th style="font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:400;padding:0 8px 10px;text-align:left;border-bottom:1px solid var(--border);">#</th>
-        <th style="font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:400;padding:0 8px 10px;text-align:left;border-bottom:1px solid var(--border);">지역</th>
-        <th style="font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:400;padding:0 8px 10px;text-align:left;border-bottom:1px solid var(--border);">거래건수</th>
-        <th style="font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:400;padding:0 8px 10px;text-align:left;border-bottom:1px solid var(--border);">평균거래금액</th>
-        <th style="font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:400;padding:0 8px 10px;text-align:left;border-bottom:1px solid var(--border);">평균노후도</th>
-        <th style="font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:400;padding:0 8px 10px;text-align:left;border-bottom:1px solid var(--border);">수요 점수</th>
-    `;
-}
-
+let searchTimer = null;
 async function handleSearch(q) {
+    clearTimeout(searchTimer);
+    const clearBtn = document.getElementById('clearBtn');
+    clearBtn.style.display = q ? 'block' : 'none';
+
     if (!q) {
-        resetTableHeader();
-        renderAll(allData);
+        document.getElementById('searchResultCount').textContent = '';
+        renderAll(filteredData);
         return;
     }
 
-    // 지역 검색 먼저
-    const regionFiltered = allData.filter(d =>
-        d.시도.includes(q) || d.시군구.includes(q)
-    );
+    searchTimer = setTimeout(async () => {
+        // 지역 검색
+        const regionHits = filteredData.filter(d =>
+            d.시도.includes(q) || d.시군구.includes(q)
+        );
+        if (regionHits.length > 0) {
+            document.getElementById('searchResultCount').textContent = `${regionHits.length}개 지역`;
+            renderAll(regionHits);
+            return;
+        }
 
-    // 지역 검색 결과 있으면 지역으로 표시
-    if (regionFiltered.length > 0) {
-        resetTableHeader();
-        renderAll(regionFiltered);
-        return;
-    }
-
-    // 지역 검색 결과 없으면 단지명 API 호출
-    const res = await fetch(`/api/search?q=${encodeURIComponent(q)}&type=apt`);
-    const json = await res.json();
-
-    if (json.count > 0) {
-        document.querySelector('thead tr').innerHTML = `
-            <th style="font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:400;padding:0 8px 10px;text-align:left;border-bottom:1px solid var(--border);">#</th>
-            <th style="font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:400;padding:0 8px 10px;text-align:left;border-bottom:1px solid var(--border);">단지명</th>
-            <th style="font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:400;padding:0 8px 10px;text-align:left;border-bottom:1px solid var(--border);">법정동</th>
-            <th style="font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:400;padding:0 8px 10px;text-align:left;border-bottom:1px solid var(--border);">거래금액</th>
-            <th style="font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:400;padding:0 8px 10px;text-align:left;border-bottom:1px solid var(--border);">건축년도</th>
-            <th style="font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:400;padding:0 8px 10px;text-align:left;border-bottom:1px solid var(--border);">전용면적</th>
-        `;
-        updateAptTable(json.data);
-    } else {
-        resetTableHeader();
-        renderAll(allData);
-    }
+        // 단지명 검색
+        try {
+            const res = await fetch(`/api/search?q=${encodeURIComponent(q)}&type=apt`);
+            const json = await res.json();
+            if (json.count > 0) {
+                document.getElementById('searchResultCount').textContent = `단지 ${json.count}건`;
+                document.getElementById('tableInfo').textContent = `단지명 검색: "${q}"`;
+                updateAptTable(json.data);
+            } else {
+                document.getElementById('searchResultCount').textContent = '결과 없음';
+                renderAll(filteredData);
+            }
+        } catch (e) { console.error(e); }
+    }, 300);
 }
 
-function updateAptTable(data) {
-    const tbody = document.getElementById('rankBody');
-    tbody.innerHTML = '';
-    data.forEach((d, i) => {
-        const tr = document.createElement('tr');
-        tr.style.cssText = 'border-bottom:1px solid rgba(30,48,80,.5);';
-        tr.innerHTML = `
-            <td style="padding:9px 8px;font-family:var(--mono);font-size:11px;color:var(--muted);">${i+1}</td>
-            <td style="padding:9px 8px;">${d.단지명}</td>
-            <td style="padding:9px 8px;font-family:var(--mono);color:var(--muted);">${d.법정동}</td>
-            <td style="padding:9px 8px;font-family:var(--mono);color:var(--muted);">${d.거래금액_만원}만</td>
-            <td style="padding:9px 8px;font-family:var(--mono);color:var(--muted);">${d.건축년도}년</td>
-            <td style="padding:9px 8px;font-family:var(--mono);color:var(--muted);">${d.전용면적}㎡</td>`;
-        tbody.appendChild(tr);
-    });
+function clearSearch() {
+    const input = document.getElementById('searchInput');
+    input.value = '';
+    document.getElementById('clearBtn').style.display = 'none';
+    document.getElementById('searchResultCount').textContent = '';
+    renderAll(filteredData);
 }
 
-// ── 필터
+// ── 시도 필터
 function filterData(sido) {
-    document.querySelectorAll('.filter-btn').forEach(btn => {
-        btn.style.background = 'var(--surface)';
-        btn.style.color = 'var(--text)';
-        btn.style.border = '1px solid var(--border)';
-    });
+    currentSido = sido;
+    document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
     const activeBtn = document.getElementById('btn-' + sido);
-    if (activeBtn) {
-        activeBtn.style.background = 'var(--accent)';
-        activeBtn.style.color = 'white';
-        activeBtn.style.border = 'none';
-    }
-    const filtered = sido === '전체' ? allData : allData.filter(d => d.시도 === sido);
-    renderAll(filtered);
+    if (activeBtn) activeBtn.classList.add('active');
+    filteredData = sido === '전체' ? allData : allData.filter(d => d.시도.includes(sido));
+    clearSearch();
+    renderAll(filteredData);
 }
 
-// ── 초기 로드
+// ── 초기화
 loadData();
 </script>
 </body>
