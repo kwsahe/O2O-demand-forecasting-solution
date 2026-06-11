@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>오늘의집 | 통계·분석</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <style>
+        :root {
+            --bg:       #080e1a;
+            --surface:  #0d1626;
+            --surface2: #111e33;
+            --surface3: #162240;
+            --border:   #1e3050;
+            --border2:  #253d66;
+            --accent:   #f97316;
+            --accent2:  #fbbf24;
+            --blue:     #38bdf8;
+            --green:    #34d399;
+            --purple:   #a78bfa;
+            --red:      #f87171;
+            --text:     #e2e8f0;
+            --text2:    #94a3b8;
+            --muted:    #64748b;
+            --mono:     'DM Mono', monospace;
+            --body:     'Noto Sans KR', sans-serif;
+        }
+
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        html { scroll-behavior: smooth; }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: var(--body);
+            font-size: 14px;
+            min-height: 100vh;
+            line-height: 1.5;
+        }
+
+        body::before {
+            content: '';
+            position: fixed; inset: 0;
+            background-image:
+                linear-gradient(var(--border) 1px, transparent 1px),
+                linear-gradient(90deg, var(--border) 1px, transparent 1px);
+            background-size: 40px 40px;
+            opacity: 0.18;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* ── 카드 공통 */
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            transition: border-color .2s, box-shadow .2s;
+        }
+        .card:hover {
+            border-color: var(--border2);
+            box-shadow: 0 0 0 1px var(--border2), 0 8px 32px rgba(0,0,0,.4);
+        }
+
+        /* ── KPI 카드 */
+        .kpi-card {
+            position: relative;
+            overflow: hidden;
+            padding: 20px 22px 18px;
+            cursor: default;
+        }
+        .kpi-card::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg, rgba(255,255,255,.03) 0%, transparent 60%);
+            pointer-events: none;
+        }
+        .kpi-label {
+            font-family: var(--mono);
+            font-size: 10px;
+            letter-spacing: .14em;
+            color: var(--muted);
+            text-transform: uppercase;
+            margin-bottom: 10px;
+        }
+        .kpi-value {
+            font-family: var(--mono);
+            font-size: 30px;
+            font-weight: 500;
+            line-height: 1;
+        }
+        .kpi-sub {
+            margin-top: 10px;
+            font-size: 12px;
+            color: var(--text2);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .kpi-icon {
+            position: absolute;
+            top: 18px;
+            right: 18px;
+            font-size: 22px;
+            opacity: .25;
+        }
+        .kpi-bar {
+            position: absolute;
+            bottom: 0; left: 0; right: 0;
+            height: 3px;
+            border-radius: 0 0 14px 14px;
+        }
+
+        /* ── 내비게이션 */
+        .nav-link {
+            font-family: var(--mono);
+            font-size: 11px;
+            letter-spacing: .08em;
+            padding: 6px 14px;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            background: var(--surface);
+            color: var(--text2);
+            text-decoration: none;
+            transition: all .15s;
+            white-space: nowrap;
+        }
+        .nav-link:hover { border-color: var(--border2); color: var(--text); }
+        .nav-link.active {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: white;
+        }
+
+        /* ── 섹션 레이블 */
+        .section-label {
+            font-family: var(--mono);
+            font-size: 10px;
+            letter-spacing: .14em;
+            color: var(--muted);
+            text-transform: uppercase;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .section-label::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: var(--border);
+        }
+
+        /* ── 테이블 */
+        .rank-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+        .rank-table th {
+            font-family: var(--mono);
+            font-size: 10px;
+            letter-spacing: .1em;
+            text-transform: uppercase;
+            color: var(--muted);
+            font-weight: 400;
+            padding: 0 10px 10px;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+        .rank-table td { padding: 9px 10px; vertical-align: middle; }
+        .rank-table tr { border-bottom: 1px solid rgba(30,48,80,.5); transition: background .12s; }
+        .rank-table tbody tr:hover { background: var(--surface2); }
+        .rank-table tbody tr:last-child { border-bottom: none; }
+
+        /* ── 점수 배지 */
+        .score-badge {
+            display: inline-block;
+            font-family: var(--mono);
+            font-size: 10px;
+            padding: 2px 7px;
+            border-radius: 4px;
+            font-weight: 500;
+        }
+
+        /* ── 애니메이션 */
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: .4; transform: scale(.7); }
+        }
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(14px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+        .anim-0  { animation: fadeUp .45s ease both 0s; }
+        .anim-1  { animation: fadeUp .45s ease both .05s; }
+        .anim-2  { animation: fadeUp .45s ease both .10s; }
+        .anim-3  { animation: fadeUp .45s ease both .15s; }
+        .anim-4  { animation: fadeUp .45s ease both .20s; }
+        .anim-5  { animation: fadeUp .45s ease both .25s; }
+        .anim-6  { animation: fadeUp .45s ease both .30s; }
+        .anim-7  { animation: fadeUp .45s ease both .35s; }
+
+        /* ── 스크롤바 */
+        ::-webkit-scrollbar { width: 5px; height: 5px; }
+        ::-webkit-scrollbar-track { background: var(--surface); }
+        ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+    </style>
+</head>
+<body>
+
+<!-- ══════════════════════════════ HEADER ══════════════════════════════ -->
+<header id="main-header" style="position:sticky;top:0;z-index:100;display:flex;align-items:center;justify-content:space-between;padding:14px 32px;border-bottom:1px solid var(--border);background:rgba(8,14,26,.92);backdrop-filter:blur(12px);">
+    <div style="display:flex;align-items:center;gap:14px;">
+        <div style="width:34px;height:34px;background:linear-gradient(135deg,var(--accent),var(--accent2));border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0;">📊</div>
+        <div>
+            <div style="font-size:14px;font-weight:700;letter-spacing:.04em;">오늘의집 · 통계·분석</div>
+            <div style="font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;margin-top:1px;">O2O Demand Forecasting Pipeline · v1.0</div>
+        </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:20px;">
+        <!-- 내비게이션 -->
+        <nav style="display:flex;gap:6px;">
+            <a href="/" class="nav-link">대시보드</a>
+            <a href="/analytics" class="nav-link active">통계·분석</a>
+        </nav>
+        <!-- 데이터 기준 -->
+        <div style="font-family:var(--mono);font-size:10px;color:var(--muted);display:flex;align-items:center;gap:5px;">
+            <span style="color:var(--border2);">DATA</span>
+            <span>2025.01 – 2025.12</span>
+        </div>
+        <!-- 라이브 -->
+        <div style="display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:11px;color:var(--green);">
+            <div style="width:6px;height:6px;border-radius:50%;background:var(--green);animation:pulse 1.8s ease-in-out infinite;"></div>
+            LIVE
+        </div>
+        <div id="clock" style="font-family:var(--mono);font-size:11px;color:var(--muted);min-width:160px;text-align:right;">—</div>
+    </div>
+</header>
+
+<!-- ══════════════════════════════ MAIN ══════════════════════════════ -->
+<main style="position:relative;z-index:1;padding:28px 32px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px;">
+
+<!-- ── KPI 행 ── -->
+<div id="kpi-row" style="grid-column:1/-1;display:grid;grid-template-columns:repeat(4,1fr);gap:16px;">
+    <div class="card kpi-card anim-0">
+        <div class="kpi-icon">🗺️</div>
+        <div class="kpi-label">분석 시군구 수</div>
+        <div class="kpi-value" id="kpi1">—</div>
+        <div class="kpi-sub" id="kpi1Sub">전체 지역</div>
+        <div class="kpi-bar" style="background:var(--accent);"></div>
+    </div>
+    <div class="card kpi-card anim-1">
+        <div class="kpi-icon">🏚️</div>
+        <div class="kpi-label">평균 노후도</div>
+        <div class="kpi-value" id="kpi2">—</div>
+        <div class="kpi-sub">Old Apartment 평균 연식</div>
+        <div class="kpi-bar" style="background:var(--blue);"></div>
+    </div>
+    <div class="card kpi-card anim-2">
+        <div class="kpi-icon">🏗️</div>
+        <div class="kpi-label">총 신규입주 세대수</div>
+        <div class="kpi-value" id="kpi3">—</div>
+        <div class="kpi-sub" id="kpi3Sub">입주예정 단지 합계</div>
+        <div class="kpi-bar" style="background:var(--accent2);"></div>
+    </div>
+    <div class="card kpi-card anim-3">
+        <div class="kpi-icon">💰</div>
+        <div class="kpi-label">평균 거래금액</div>
+        <div class="kpi-value" id="kpi4">—</div>
+        <div class="kpi-sub">Old Apartment 평균 (만원)</div>
+        <div class="kpi-bar" style="background:var(--green);"></div>
+    </div>
+</div>
+
+<!-- ── 시도별 요약 차트 ── -->
+<div id="chart-sido-card" class="card anim-4" style="grid-column:1/-1;padding:22px;">
+    <div class="section-label">시도별 평균 / 최고 인테리어 수요 점수</div>
+    <canvas id="sidoChart" height="110"></canvas>
+</div>
+
+<!-- ── 등급 분포 도넛 ── -->
+<div id="chart-grade-card" class="card anim-5" style="grid-column:1/2;padding:22px;">
+    <div class="section-label">시군구 등급(S/A/B) 분포</div>
+    <canvas id="gradeChart" height="220"></canvas>
+</div>
+
+<!-- ── 거래건수 vs 평균거래금액 버블 ── -->
+<div id="chart-bubble-card" class="card anim-5" style="grid-column:2/4;padding:22px;">
+    <div class="section-label">거래건수 × 평균거래금액 × 수요점수 (시군구별)</div>
+    <canvas id="bubbleChart" height="160"></canvas>
+</div>
+
+<!-- ── 노후도 vs 수요점수 산점도 ── -->
+<div id="chart-age-card" class="card anim-6" style="grid-column:1/2;padding:22px;">
+    <div class="section-label">평균 노후도 × 수요 점수</div>
+    <canvas id="ageChart" height="220"></canvas>
+</div>
+
+<!-- ── 신규입주 TOP 10 ── -->
+<div id="chart-newsupply-card" class="card anim-6" style="grid-column:2/4;padding:22px;">
+    <div class="section-label">신규입주 세대수 TOP 10 시군구</div>
+    <canvas id="newSupplyChart" height="160"></canvas>
+</div>
+
+<!-- ── 시도별 요약 테이블 ── -->
+<div id="sido-table-card" class="card anim-7" style="grid-column:1/-1;padding:22px;">
+    <div class="section-label">시도별 요약</div>
+    <div style="overflow-x:auto;">
+        <table class="rank-table">
+            <thead>
+                <tr>
+                    <th>시도</th>
+                    <th>시군구 수</th>
+                    <th>총 거래건수</th>
+                    <th>평균 수요점수</th>
+                    <th>최고 수요점수</th>
+                    <th>총 신규입주 세대수</th>
+                </tr>
+            </thead>
+            <tbody id="sidoTableBody"></tbody>
+        </table>
+    </div>
+</div>
+
+<!-- ── 전체 시군구 랭킹 테이블 ── -->
+<div id="full-table-card" class="card anim-7" style="grid-column:1/-1;padding:22px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+        <div class="section-label" style="margin-bottom:0;flex:1;">전체 시군구 상세 데이터</div>
+        <div id="fullTableInfo" style="font-family:var(--mono);font-size:10px;color:var(--muted);"></div>
+    </div>
+    <div style="overflow-x:auto;">
+        <table class="rank-table">
+            <thead>
+                <tr>
+                    <th style="width:44px;">#</th>
+                    <th>지역</th>
+                    <th>거래건수</th>
+                    <th>평균거래금액</th>
+                    <th>평균노후도</th>
+                    <th>평균면적</th>
+                    <th>신규입주</th>
+                    <th>입주단지</th>
+                    <th style="width:160px;">수요 점수</th>
+                    <th style="width:72px;">등급</th>
+                </tr>
+            </thead>
+            <tbody id="fullTableBody"></tbody>
+        </table>
+    </div>
+</div>
+
+</main>
+
+<!-- ══════════════════════════════ FOOTER ══════════════════════════════ -->
+<footer style="position:relative;z-index:1;padding:20px 32px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;background:rgba(8,14,26,.6);">
+    <div style="font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;">오늘의집 · O2O Demand Forecasting Solution</div>
+    <div style="font-family:var(--mono);font-size:10px;color:var(--muted);">데이터 출처: 국토교통부 실거래가 공개시스템 · 한국부동산원</div>
+</footer>
+
+<!-- ══════════════════════════════ SCRIPT ══════════════════════════════ -->
+<script>
+// ── 시계
+function updateClock() {
+    const now = new Date();
+    document.getElementById('clock').textContent =
+        now.toLocaleDateString('ko-KR') + ' ' +
+        now.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+}
+updateClock();
+setInterval(updateClock, 1000);
+
+// ── Chart.js 기본 설정
+Chart.defaults.color = '#64748b';
+Chart.defaults.font.family = "'DM Mono', monospace";
+
+const TOOLTIP_STYLE = {
+    backgroundColor: '#0d1626',
+    borderColor: '#1e3050',
+    borderWidth: 1,
+    titleColor: '#e2e8f0',
+    bodyColor: '#94a3b8',
+    padding: 10,
+};
+const GRID_STYLE = { color: 'rgba(30,48,80,.4)', drawBorder: false };
+
+function regionLabel(d) {
+    return d.시도.replace('특별시','').replace('광역시','').replace('도','') + ' ' + d.시군구;
+}
+function scoreTier(score) {
+    if (score >= 60) return { label: 'S', bg: 'rgba(249,115,22,.15)', color: '#f97316' };
+    if (score >= 30) return { label: 'A', bg: 'rgba(251,191,36,.12)', color: '#fbbf24' };
+    return { label: 'B', bg: 'rgba(100,116,139,.12)', color: '#64748b' };
+}
+
+// ── 데이터 로드
+async function loadData() {
+    try {
+        const [demandRes, sidoRes] = await Promise.all([
+            fetch('/api/demand?top=200'),
+            fetch('/api/sido-summary'),
+        ]);
+        const demandJson = await demandRes.json();
+        const sidoJson = await sidoRes.json();
+
+        const data = demandJson.data || [];
+        const sidoData = sidoJson.data || [];
+
+        updateKPI(data, sidoData);
+        updateSidoChart(sidoData);
+        updateGradeChart(data);
+        updateBubbleChart(data);
+        updateAgeChart(data);
+        updateNewSupplyChart(data);
+        updateSidoTable(sidoData);
+        updateFullTable(data);
+    } catch (e) {
+        console.error('데이터 로드 실패:', e);
+    }
+}
+
+// ── KPI
+function updateKPI(data, sidoData) {
+    document.getElementById('kpi1').textContent = data.length + '개';
+    document.getElementById('kpi1Sub').textContent = sidoData.map(d => d.시도).join(', ');
+
+    const avgAge = data.reduce((s, d) => s + (d.평균노후도_년 || 0), 0) / data.length;
+    document.getElementById('kpi2').textContent = isNaN(avgAge) ? '—' : avgAge.toFixed(1) + '년';
+
+    const totalNewSupply = data.reduce((s, d) => s + (d.신규입주_세대수 || 0), 0);
+    document.getElementById('kpi3').textContent = Math.round(totalNewSupply).toLocaleString() + '세대';
+    const totalComplex = data.reduce((s, d) => s + (d.입주단지수 || 0), 0);
+    document.getElementById('kpi3Sub').textContent = `${Math.round(totalComplex).toLocaleString()}개 단지`;
+
+    const avgPrice = data.reduce((s, d) => s + (d.평균거래금액_만원 || 0), 0) / data.length;
+    document.getElementById('kpi4').textContent = isNaN(avgPrice) ? '—' : Math.round(avgPrice).toLocaleString() + '만';
+}
+
+// ── 시도별 평균/최고 수요점수
+let sidoChartInst = null;
+function updateSidoChart(data) {
+    if (!data || data.length === 0) return;
+    const ctx = document.getElementById('sidoChart').getContext('2d');
+    if (sidoChartInst) sidoChartInst.destroy();
+
+    const sorted = [...data].sort((a, b) => b.평균수요점수 - a.평균수요점수);
+
+    sidoChartInst = new Chart(ctx, {
+        data: {
+            labels: sorted.map(d => d.시도),
+            datasets: [
+                {
+                    type: 'bar',
+                    label: '평균 수요 점수',
+                    data: sorted.map(d => d.평균수요점수),
+                    backgroundColor: 'rgba(56,189,248,.55)',
+                    borderRadius: 5,
+                    borderSkipped: false,
+                },
+                {
+                    type: 'scatter',
+                    label: '최고 수요 점수',
+                    data: sorted.map(d => d.최고수요점수),
+                    backgroundColor: '#f97316',
+                    pointRadius: 5,
+                    pointHoverRadius: 6,
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: { position: 'bottom', labels: { padding: 12, font: { size: 11 }, boxWidth: 10, boxHeight: 10 } },
+                tooltip: { ...TOOLTIP_STYLE, callbacks: { label: ctx => `${ctx.dataset.label}: ${ctx.raw.y ?? ctx.raw}` } }
+            },
+            scales: {
+                x: { grid: GRID_STYLE, ticks: { font: { size: 10 } } },
+                y: { grid: GRID_STYLE, ticks: { font: { size: 10 } }, min: 0 }
+            }
+        }
+    });
+}
+
+// ── 등급 분포 도넛
+let gradeChartInst = null;
+function updateGradeChart(data) {
+    const counts = { S: 0, A: 0, B: 0 };
+    data.forEach(d => { counts[scoreTier(d.인테리어_수요점수).label]++; });
+
+    const ctx = document.getElementById('gradeChart').getContext('2d');
+    if (gradeChartInst) gradeChartInst.destroy();
+    gradeChartInst = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: [`S등급 (60~100)`, `A등급 (30~59)`, `B등급 (0~29)`],
+            datasets: [{
+                data: [counts.S, counts.A, counts.B],
+                backgroundColor: ['#f97316', '#fbbf24', '#64748b'],
+                borderColor: '#080e1a',
+                borderWidth: 3,
+            }]
+        },
+        options: {
+            responsive: true,
+            cutout: '62%',
+            plugins: {
+                legend: { position: 'bottom', labels: { padding: 12, font: { size: 11 }, boxWidth: 10, boxHeight: 10 } },
+                tooltip: { ...TOOLTIP_STYLE, callbacks: { label: ctx => `${ctx.label}: ${ctx.raw}개 시군구` } }
+            }
+        }
+    });
+}
+
+// ── 거래건수 × 평균거래금액 × 수요점수 버블차트
+let bubbleChartInst = null;
+function updateBubbleChart(data) {
+    const ctx = document.getElementById('bubbleChart').getContext('2d');
+    if (bubbleChartInst) bubbleChartInst.destroy();
+
+    bubbleChartInst = new Chart(ctx, {
+        type: 'bubble',
+        data: {
+            datasets: [{
+                label: '시군구',
+                data: data.map(d => ({
+                    x: d.거래건수,
+                    y: d.평균거래금액_만원,
+                    r: Math.max(3, (d.인테리어_수요점수 || 0) / 6),
+                    region: regionLabel(d),
+                    score: d.인테리어_수요점수,
+                })),
+                backgroundColor: data.map(d => {
+                    const s = d.인테리어_수요점수;
+                    if (s >= 60) return 'rgba(249,115,22,.55)';
+                    if (s >= 30) return 'rgba(251,191,36,.45)';
+                    return 'rgba(56,189,248,.4)';
+                }),
+                borderColor: 'rgba(255,255,255,.15)',
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    ...TOOLTIP_STYLE,
+                    callbacks: {
+                        label: ctx => `${ctx.raw.region}: 거래 ${ctx.raw.x.toLocaleString()}건 / 평균 ${ctx.raw.y.toLocaleString()}만원 / 점수 ${ctx.raw.score}`
+                    }
+                }
+            },
+            scales: {
+                x: { grid: GRID_STYLE, title: { display: true, text: '거래건수', font: { size: 10 } }, ticks: { font: { size: 10 } } },
+                y: { grid: GRID_STYLE, title: { display: true, text: '평균 거래금액 (만원)', font: { size: 10 } }, ticks: { font: { size: 10 } } }
+            }
+        }
+    });
+}
+
+// ── 평균 노후도 × 수요 점수 산점도
+let ageChartInst = null;
+function updateAgeChart(data) {
+    const ctx = document.getElementById('ageChart').getContext('2d');
+    if (ageChartInst) ageChartInst.destroy();
+
+    ageChartInst = new Chart(ctx, {
+        type: 'scatter',
+        data: {
+            datasets: [{
+                label: '시군구',
+                data: data.map(d => ({ x: d.평균노후도_년, y: d.인테리어_수요점수, region: regionLabel(d) })),
+                backgroundColor: '#a78bfa',
+                pointRadius: 4,
+                pointHoverRadius: 6,
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    ...TOOLTIP_STYLE,
+                    callbacks: { label: ctx => `${ctx.raw.region}: 노후도 ${ctx.raw.x}년 / 점수 ${ctx.raw.y}` }
+                }
+            },
+            scales: {
+                x: { grid: GRID_STYLE, title: { display: true, text: '평균 노후도 (년)', font: { size: 10 } }, ticks: { font: { size: 10 } } },
+                y: { grid: GRID_STYLE, title: { display: true, text: '수요 점수', font: { size: 10 } }, ticks: { font: { size: 10 } }, min: 0 }
+            }
+        }
+    });
+}
+
+// ── 신규입주 TOP 10
+let newSupplyChartInst = null;
+function updateNewSupplyChart(data) {
+    const top = [...data].sort((a, b) => b.신규입주_세대수 - a.신규입주_세대수).slice(0, 10);
+    const ctx = document.getElementById('newSupplyChart').getContext('2d');
+    if (newSupplyChartInst) newSupplyChartInst.destroy();
+
+    newSupplyChartInst = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: top.map(regionLabel),
+            datasets: [{
+                label: '신규입주 세대수',
+                data: top.map(d => d.신규입주_세대수),
+                backgroundColor: 'rgba(52,211,153,.6)',
+                borderRadius: 5,
+                borderSkipped: false,
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: { display: false },
+                tooltip: { ...TOOLTIP_STYLE, callbacks: { label: ctx => `${ctx.raw.toLocaleString()}세대` } }
+            },
+            scales: {
+                x: { grid: GRID_STYLE, ticks: { font: { size: 10 }, maxRotation: 30 } },
+                y: { grid: GRID_STYLE, ticks: { font: { size: 10 } }, min: 0 }
+            }
+        }
+    });
+}
+
+// ── 시도별 요약 테이블
+function updateSidoTable(sidoData) {
+    const tbody = document.getElementById('sidoTableBody');
+    tbody.innerHTML = '';
+    [...sidoData].sort((a, b) => b.평균수요점수 - a.평균수요점수).forEach(d => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td style="font-weight:500;">${d.시도}</td>
+            <td style="font-family:var(--mono);color:var(--text2);">${d.시군구수}개</td>
+            <td style="font-family:var(--mono);color:var(--text2);">${(d.총거래건수 || 0).toLocaleString()}건</td>
+            <td style="font-family:var(--mono);color:var(--accent2);">${d.평균수요점수}</td>
+            <td style="font-family:var(--mono);color:var(--accent);">${d.최고수요점수}</td>
+            <td style="font-family:var(--mono);color:var(--text2);">${(d.총신규입주 || 0).toLocaleString()}세대</td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+// ── 전체 시군구 상세 테이블
+function updateFullTable(data) {
+    document.getElementById('fullTableInfo').textContent = `${data.length}개 시군구`;
+    const tbody = document.getElementById('fullTableBody');
+    tbody.innerHTML = '';
+    const maxScore = data[0]?.인테리어_수요점수 || 100;
+    data.forEach((d, i) => {
+        const pct = (d.인테리어_수요점수 / maxScore * 100).toFixed(1);
+        const tier = scoreTier(d.인테리어_수요점수);
+        const rankLabel = i < 3
+            ? `<span style="font-size:14px;">${['🥇','🥈','🥉'][i]}</span>`
+            : `<span style="color:var(--muted);">${i + 1}</span>`;
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td style="font-family:var(--mono);font-size:11px;">${rankLabel}</td>
+            <td style="font-weight:${i < 3 ? '500' : '400'};">${d.시도} ${d.시군구}</td>
+            <td style="font-family:var(--mono);color:var(--text2);">${(d.거래건수 || 0).toLocaleString()}건</td>
+            <td style="font-family:var(--mono);color:var(--text2);">${Math.round(d.평균거래금액_만원 || 0).toLocaleString()}만</td>
+            <td style="font-family:var(--mono);color:var(--text2);">${d.평균노후도_년}년</td>
+            <td style="font-family:var(--mono);color:var(--text2);">${d.평균면적_m2}㎡</td>
+            <td style="font-family:var(--mono);color:var(--text2);">${(d.신규입주_세대수 || 0).toLocaleString()}세대</td>
+            <td style="font-family:var(--mono);color:var(--text2);">${(d.입주단지수 || 0).toLocaleString()}개</td>
+            <td>
+                <div style="display:flex;align-items:center;gap:8px;">
+                    <div style="flex:1;height:5px;background:var(--surface2);border-radius:3px;overflow:hidden;">
+                        <div style="height:100%;width:${pct}%;background:linear-gradient(90deg,var(--accent),var(--accent2));border-radius:3px;transition:width 1s ease;"></div>
+                    </div>
+                    <div style="font-family:var(--mono);font-size:11px;color:var(--accent2);min-width:32px;text-align:right;">${d.인테리어_수요점수}</div>
+                </div>
+            </td>
+            <td><span class="score-badge" style="background:${tier.bg};color:${tier.color};">${tier.label}등급</span></td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+// ── 초기화
+loadData();
+</script>
+</body>
+</html>

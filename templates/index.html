@@ -114,6 +114,27 @@
             border-radius: 0 0 14px 14px;
         }
 
+        /* ── 내비게이션 */
+        .nav-link {
+            font-family: var(--mono);
+            font-size: 11px;
+            letter-spacing: .08em;
+            padding: 6px 14px;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            background: var(--surface);
+            color: var(--text2);
+            text-decoration: none;
+            transition: all .15s;
+            white-space: nowrap;
+        }
+        .nav-link:hover { border-color: var(--border2); color: var(--text); }
+        .nav-link.active {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: white;
+        }
+
         /* ── 필터 버튼 */
         .filter-btn {
             font-family: var(--mono);
@@ -248,6 +269,93 @@
         ::-webkit-scrollbar { width: 5px; height: 5px; }
         ::-webkit-scrollbar-track { background: var(--surface); }
         ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+
+        /* ── 챗봇 */
+        .chat-panel {
+            display: flex;
+            flex-direction: column;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            box-shadow: 0 8px 24px rgba(0,0,0,.35);
+            overflow: hidden;
+            height: 460px;
+        }
+        .chat-header {
+            padding: 18px 22px;
+            border-bottom: 1px solid var(--border);
+            font-size: 15px;
+            font-weight: 500;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .chat-header span.sub {
+            font-family: var(--mono);
+            font-size: 10px;
+            color: var(--muted);
+            font-weight: 400;
+            margin-left: 8px;
+        }
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 22px 26px;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            font-size: 14px;
+            line-height: 1.7;
+        }
+        .chat-msg {
+            max-width: 80%;
+            padding: 12px 16px;
+            border-radius: 12px;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+        .chat-msg.user {
+            align-self: flex-end;
+            background: var(--accent);
+            color: #fff;
+            border-bottom-right-radius: 2px;
+        }
+        .chat-msg.bot {
+            align-self: flex-start;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            color: var(--text);
+            border-bottom-left-radius: 2px;
+        }
+        .chat-msg.bot.loading { color: var(--muted); }
+        .chat-input-row {
+            display: flex;
+            gap: 10px;
+            padding: 16px 22px;
+            border-top: 1px solid var(--border);
+        }
+        .chat-input {
+            flex: 1;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 12px 16px;
+            color: var(--text);
+            font-family: var(--body);
+            font-size: 14px;
+            outline: none;
+        }
+        .chat-input:focus { border-color: var(--accent); }
+        .chat-send {
+            background: var(--accent);
+            border: none;
+            border-radius: 10px;
+            color: #fff;
+            font-size: 14px;
+            padding: 0 22px;
+            cursor: pointer;
+        }
+        .chat-send:disabled { opacity: .5; cursor: default; }
     </style>
 </head>
 <body>
@@ -262,6 +370,11 @@
         </div>
     </div>
     <div style="display:flex;align-items:center;gap:20px;">
+        <!-- 내비게이션 -->
+        <nav style="display:flex;gap:6px;">
+            <a href="/" class="nav-link active">대시보드</a>
+            <a href="/analytics" class="nav-link">통계·분석</a>
+        </nav>
         <!-- 데이터 기준 -->
         <div style="font-family:var(--mono);font-size:10px;color:var(--muted);display:flex;align-items:center;gap:5px;">
             <span style="color:var(--border2);">DATA</span>
@@ -278,6 +391,20 @@
 
 <!-- ══════════════════════════════ MAIN ══════════════════════════════ -->
 <main style="position:relative;z-index:1;padding:28px 32px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px;">
+
+<!-- ── 챗봇 (상단 고정) ── -->
+<div class="chat-panel" id="chatPanel" style="grid-column:1/-1;">
+    <div class="chat-header">
+        <div>인테리어 수요 챗봇 <span class="sub">DEMAND ASSISTANT</span></div>
+    </div>
+    <div class="chat-messages" id="chatMessages">
+        <div class="chat-msg bot">안녕하세요! 😊 지역별 인테리어 수요 점수나 점수 산출 방식에 대해 무엇이든 편하게 물어보세요.<br><br>예) "서초구 수요 점수 알려줘", "수요 점수가 가장 높은 지역은?", "수요 점수는 어떻게 계산되는지 자세히 설명해줘"</div>
+    </div>
+    <div class="chat-input-row">
+        <input id="chatInput" class="chat-input" type="text" placeholder="질문을 입력하세요..." onkeydown="if(event.key==='Enter') sendChatMessage()">
+        <button class="chat-send" id="chatSendBtn" onclick="sendChatMessage()">전송</button>
+    </div>
+</div>
 
 <!-- ── KPI 행 ── -->
 <div id="kpi-row" style="grid-column:1/-1;display:grid;grid-template-columns:repeat(4,1fr);gap:16px;">
@@ -352,6 +479,12 @@
     <div class="section-label">아파트 세그먼트 분포</div>
     <canvas id="pieChart" height="210"></canvas>
     <div style="margin-top:14px;font-size:11px;color:var(--muted);text-align:center;">총 <span id="totalTxCount" style="color:var(--text2);font-family:var(--mono);">—</span>건 기준</div>
+</div>
+
+<!-- ── 시도별 요약 차트 ── -->
+<div id="chart-sido-card" class="card anim-5" style="grid-column:1/-1;padding:22px;">
+    <div class="section-label">시도별 인테리어 수요 점수 요약</div>
+    <canvas id="sidoChart" height="120"></canvas>
 </div>
 
 <!-- ── 랭킹 테이블 ── -->
@@ -573,6 +706,7 @@ let filteredData = [];
 let currentSido = '전체';
 let barChartInst = null;
 let pieChartInst = null;
+let sidoChartInst = null;
 
 const PIE_TOTALS = [8245, 13866, 10892, 46588];
 
@@ -590,6 +724,14 @@ async function loadData() {
         renderAll(allData);
     } catch (e) {
         console.error('데이터 로드 실패:', e);
+    }
+
+    try {
+        const res = await fetch('/api/sido-summary');
+        const json = await res.json();
+        updateSidoChart(json.data);
+    } catch (e) {
+        console.error('시도별 요약 로드 실패:', e);
     }
 }
 
@@ -701,6 +843,70 @@ function updatePieChart() {
                     callbacks: {
                         label: ctx => `${ctx.label}: ${ctx.raw.toLocaleString()}건`
                     }
+                }
+            }
+        }
+    });
+}
+
+// ── 시도별 요약 차트 (평균/최고 수요 점수)
+function updateSidoChart(data) {
+    if (!data || data.length === 0) return;
+    const ctx = document.getElementById('sidoChart').getContext('2d');
+    if (sidoChartInst) sidoChartInst.destroy();
+
+    const sorted = [...data].sort((a, b) => b.평균수요점수 - a.평균수요점수);
+
+    sidoChartInst = new Chart(ctx, {
+        data: {
+            labels: sorted.map(d => d.시도),
+            datasets: [
+                {
+                    type: 'bar',
+                    label: '평균 수요 점수',
+                    data: sorted.map(d => d.평균수요점수),
+                    backgroundColor: 'rgba(56,189,248,.55)',
+                    borderRadius: 5,
+                    borderSkipped: false,
+                },
+                {
+                    type: 'scatter',
+                    label: '최고 수요 점수',
+                    data: sorted.map(d => d.최고수요점수),
+                    backgroundColor: '#f97316',
+                    pointRadius: 5,
+                    pointHoverRadius: 6,
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: { padding: 12, font: { size: 11 }, boxWidth: 10, boxHeight: 10 }
+                },
+                tooltip: {
+                    backgroundColor: '#0d1626',
+                    borderColor: '#1e3050',
+                    borderWidth: 1,
+                    titleColor: '#e2e8f0',
+                    bodyColor: '#94a3b8',
+                    padding: 10,
+                    callbacks: {
+                        label: ctx => `${ctx.dataset.label}: ${ctx.raw.y ?? ctx.raw}`
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    grid: { color: 'rgba(30,48,80,.4)', drawBorder: false },
+                    ticks: { font: { size: 10 } }
+                },
+                y: {
+                    grid: { color: 'rgba(30,48,80,.4)', drawBorder: false },
+                    ticks: { font: { size: 10 } },
+                    min: 0
                 }
             }
         }
@@ -845,6 +1051,50 @@ function filterData(sido) {
     filteredData = sido === '전체' ? allData : allData.filter(d => d.시도.includes(sido));
     clearSearch();
     renderAll(filteredData);
+}
+
+// ── 챗봇
+function appendChatMessage(text, role) {
+    const messages = document.getElementById('chatMessages');
+    const div = document.createElement('div');
+    div.className = `chat-msg ${role}`;
+    div.textContent = text;
+    messages.appendChild(div);
+    messages.scrollTop = messages.scrollHeight;
+    return div;
+}
+
+async function sendChatMessage() {
+    const input = document.getElementById('chatInput');
+    const sendBtn = document.getElementById('chatSendBtn');
+    const message = input.value.trim();
+    if (!message) return;
+
+    appendChatMessage(message, 'user');
+    input.value = '';
+    sendBtn.disabled = true;
+
+    const loadingMsg = appendChatMessage('생각 중...', 'bot loading');
+
+    try {
+        const res = await fetch('/api/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message })
+        });
+        const json = await res.json();
+
+        loadingMsg.classList.remove('loading');
+        loadingMsg.textContent = json.status === 'ok'
+            ? json.answer
+            : `오류: ${json.message}`;
+    } catch (e) {
+        loadingMsg.classList.remove('loading');
+        loadingMsg.textContent = '오류가 발생했습니다. 잠시 후 다시 시도해주세요.';
+    } finally {
+        sendBtn.disabled = false;
+        document.getElementById('chatMessages').scrollTop = document.getElementById('chatMessages').scrollHeight;
+    }
 }
 
 // ── 초기화

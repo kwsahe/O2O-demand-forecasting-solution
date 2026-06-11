@@ -101,10 +101,9 @@ class DemandForecastingPipeline:
             }
             df = self.df_transactions.rename(columns=rename_map)
 
-            from src.collector import SEOUL_SIGUNGU_CODES
-            code_to_name = {v: k for k, v in SEOUL_SIGUNGU_CODES.items()}
+            from src.collector import SIGUNGU_CODE_TO_FULL_NAME
             df["시군구"] = df["수집_시군구코드"].map(
-                lambda c: f"서울특별시 {code_to_name.get(c, c)} "
+                lambda c: SIGUNGU_CODE_TO_FULL_NAME.get(c, c) + " "
             ) + df["법정동"].fillna("")
 
             df["계약년월"] = (

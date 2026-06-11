@@ -38,6 +38,73 @@ SEOUL_SIGUNGU_CODES = {
     "강동구":   "11740",
 }
 
+INCHEON_SIGUNGU_CODES = {
+    "중구":     "28110",
+    "동구":     "28140",
+    "미추홀구": "28177",
+    "연수구":   "28185",
+    "남동구":   "28200",
+    "부평구":   "28237",
+    "계양구":   "28245",
+    "서구":     "28260",
+    "강화군":   "28710",
+    "옹진군":   "28720",
+}
+
+GYEONGGI_SIGUNGU_CODES = {
+    "수원시 장안구": "41111",
+    "수원시 권선구": "41113",
+    "수원시 팔달구": "41115",
+    "수원시 영통구": "41117",
+    "성남시 수정구": "41131",
+    "성남시 중원구": "41133",
+    "성남시 분당구": "41135",
+    "의정부시":     "41150",
+    "안양시 만안구": "41171",
+    "안양시 동안구": "41173",
+    "부천시":       "41190",
+    "광명시":       "41210",
+    "평택시":       "41220",
+    "동두천시":     "41250",
+    "안산시 상록구": "41271",
+    "안산시 단원구": "41273",
+    "고양시 덕양구": "41281",
+    "고양시 일산동구": "41285",
+    "고양시 일산서구": "41287",
+    "과천시":       "41290",
+    "구리시":       "41310",
+    "남양주시":     "41360",
+    "오산시":       "41370",
+    "시흥시":       "41390",
+    "군포시":       "41410",
+    "의왕시":       "41430",
+    "하남시":       "41450",
+    "용인시 처인구": "41461",
+    "용인시 기흥구": "41463",
+    "용인시 수지구": "41465",
+    "파주시":       "41480",
+    "이천시":       "41500",
+    "안성시":       "41550",
+    "김포시":       "41570",
+    "화성시":       "41590",
+    "광주시":       "41610",
+    "양주시":       "41630",
+    "포천시":       "41650",
+    "여주시":       "41670",
+    "연천군":       "41800",
+    "가평군":       "41820",
+    "양평군":       "41830",
+}
+
+# 시군구 코드 → "시도 시군구" 전체 명칭 매핑 (수집/정규화에 사용)
+SIGUNGU_CODE_TO_FULL_NAME = {}
+for _name, _code in SEOUL_SIGUNGU_CODES.items():
+    SIGUNGU_CODE_TO_FULL_NAME[_code] = f"서울특별시 {_name}"
+for _name, _code in INCHEON_SIGUNGU_CODES.items():
+    SIGUNGU_CODE_TO_FULL_NAME[_code] = f"인천광역시 {_name}"
+for _name, _code in GYEONGGI_SIGUNGU_CODES.items():
+    SIGUNGU_CODE_TO_FULL_NAME[_code] = f"경기도 {_name}"
+
 def generate_year_months(start_ym: str, end_ym: str) -> list:
     start = datetime.strptime(start_ym, "%Y%m")
     end   = datetime.strptime(end_ym, "%Y%m")
@@ -184,10 +251,9 @@ class ApartmentDataCollector:
         }
         df = df.rename(columns=rename_map)
 
-        code_to_name = {v: k for k, v in SEOUL_SIGUNGU_CODES.items()}
         if "수집_시군구코드" in df.columns and "법정동" in df.columns:
             df["시군구"] = df["수집_시군구코드"].map(
-            lambda c: f"서울특별시 {code_to_name.get(c, c)} "
+            lambda c: SIGUNGU_CODE_TO_FULL_NAME.get(c, c) + " "
             ) + df["법정동"].fillna("")
 
         if "년" in df.columns and "월" in df.columns:

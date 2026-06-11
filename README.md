@@ -90,6 +90,25 @@ end-to-end로 동작하는 것을 목표로 합니다.
 
 ---
 
+## 🏗️ 아키텍처
+
+### 프로젝트 구성도
+
+![프로젝트 구성도](docs/project_architecture_diagram.png)
+
+데이터 소스(국토교통부 실거래가 API, 한국부동산원 입주예정 CSV) → 수집 계층(`src/collector.py`) →
+분석 파이프라인(`src/pipeline.py`) → 백엔드 API(`app.py`) → 대시보드(`templates/index.html`)로
+이어지는 전체 시스템 구조입니다.
+
+### 데이터/ML 흐름도
+
+![데이터/ML 흐름도](docs/project_ml_flow_diagram.png)
+
+데이터 수집 → 전처리 → Feature Engineering(노후도, 세그먼트 분류) → 지표 집계 → 공급 데이터 결합 →
+수요 점수 산출(Min-Max 정규화 + 가중합) → 등급 산정(S/A/B) → 대시보드 제공까지의 흐름입니다.
+
+---
+
 ## 📁 프로젝트 구조
 
 ```
@@ -97,21 +116,34 @@ O2O-Demand-Forecasting-Solution/
 │
 ├── data/
 │   ├── 아파트(매매)_실거래가_20260311170739.csv            # 국토부 실거래가 (초기 입력용)
-│   └── 한국부동산원_주택공급정보_입주예정물량정보_20251231.csv  # 입주예정 (초기 입력용)
+│   ├── 한국부동산원_주택공급정보_입주예정물량정보_20251231.csv  # 입주예정 (초기 입력용)
+│   ├── raw_api_collected.csv                     # API 자동 수집 결과 (서울·경기·인천)
+│   ├── 인테리어_수요점수_결과.csv                  # 파이프라인 실행 결과 (시군구별)
+│   ├── 시도별_수요집계_요약.csv                    # 파이프라인 실행 결과 (시도별 요약)
+│   └── chat_history.db                           # 챗봇 질문/응답 기록 (SQLite, git 제외)
 │
 ├── notebooks/
 │   ├── 01_EDA_and_Hypothesis.ipynb               # 탐색적 데이터 분석
-│   └── 02_Pipeline_and_DemandScore.ipynb         # 파이프라인 실행 & 시각화
+│   ├── 02_Pipeline_and_DemandScore.ipynb         # 파이프라인 실행 & 수요 점수 시각화
+│   └── 03_API_Collection.ipynb                   # API 수집 & 파이프라인 실행
 │
 ├── src/
-│   ├── collector.py                              # ★ 공공데이터 API 자동 수집 모듈
+│   ├── collector.py                              # ★ 공공데이터 API 자동 수집 모듈 (서울·경기·인천)
 │   ├── pipeline.py                               # ★ 인테리어 수요 점수 산출 파이프라인
 │   └── log_design.py                             # 로깅 유틸리티
 │
-├── dashboard/
-│   └── index.html                                # 인터랙티브 수요 대시보드
+├── templates/
+│   ├── index.html                                # 인터랙티브 수요 대시보드 (챗봇 상단 고정)
+│   └── analytics.html                            # 통계·분석 2페이지 (차트/테이블 모음)
+│
+├── app.py                                        # ★ Flask 웹 서버 (대시보드 + API + 챗봇)
+│
+├── docs/                                         # 아키텍처 / ML 파이프라인 다이어그램
+├── screenshots/                                  # 대시보드 스크린샷
 │
 ├── venv/                                         # 가상환경 (git 제외)
+├── .env                                          # API 키 등 환경변수 (git 제외)
+├── .env.example                                  # 환경변수 템플릿
 ├── .gitignore
 ├── requirements.txt
 └── README.md
@@ -139,7 +171,7 @@ venv\Scripts\activate
 ### 2. 패키지 설치
 
 ```powershell
-pip install PublicDataReader python-dateutil pandas jupyter
+pip install -r requirements.txt
 ```
 
 > **Python 3.14 사용 시 주의**  
@@ -155,15 +187,33 @@ pip install PublicDataReader python-dateutil pandas jupyter
 2. **"국토교통부\_아파트 매매 실거래가 상세 자료"** 검색 → 활용신청
    - 직접 링크: https://www.data.go.kr/data/15126468/openapi.do
    - 심의유형: 자동승인 (즉시 사용 가능)
-3. 마이페이지 → 인증키 관리 → **일반 인증키** 복사
+   - → `.env`의 `API_KEY`에 사용 (실거래 데이터 수집용)
+3. (선택) **"국토교통부\_공동주택 기본정보제공 서비스"** 검색 → 활용신청
+   - → `.env`의 `APT_BASIC_INFO_API_KEY`에 사용 (단지코드·세대수 등 기본정보 조회용)
+4. 마이페이지 → 인증키 관리 → **일반 인증키(Decoding)** 복사
 
 > ⚠️ **키 보안 주의사항**  
 > 인증키를 코드나 GitHub에 직접 입력하지 마세요.  
-> `.env` 파일에 보관하고 `.gitignore`에 추가하세요.
+> `.env` 파일에 보관하고 `.gitignore`에 추가하세요.  
+> 같은 디코딩 키를 두 서비스 모두에서 사용해도 되지만, **서비스별로 별도 "활용신청"** 이 필요합니다.
+
+`.env.example`을 복사해서 `.env`를 만들고 키 값을 채워주세요.
+
+```powershell
+copy .env.example .env
+```
 
 ```
 # .env 파일 예시
+# 1) 아파트매매 실거래 상세자료 - 거래 데이터 수집용
 API_KEY=여기에키값
+
+# 2) 공동주택 기본정보제공 서비스 - 단지 기본정보(단지코드, 세대수 등) 조회용
+APT_BASIC_INFO_API_KEY=여기에키값
+
+# 로컬 Ollama 설정 (선택)
+OLLAMA_HOST=http://localhost:11434
+CHAT_MODEL=qwen2.5:3b
 ```
 
 ### API 연결 테스트
@@ -188,12 +238,23 @@ python src/collector.py 일반인증키값
 ### 데이터 수집 (API 자동 수집)
 
 ```python
-from src.collector import ApartmentDataCollector
+from src.collector import (
+    ApartmentDataCollector,
+    SEOUL_SIGUNGU_CODES, GYEONGGI_SIGUNGU_CODES, INCHEON_SIGUNGU_CODES,
+)
 
 collector = ApartmentDataCollector(api_key="일반인증키값")
 
 # 최근 12개월 서울 전체 수집 후 CSV 저장
 df = collector.fetch_recent_months(
+    months=12,
+    save_path="data/raw_api_collected.csv"
+)
+
+# 서울 + 경기 + 인천 전체(77개 시군구) 수집
+all_codes = {**SEOUL_SIGUNGU_CODES, **GYEONGGI_SIGUNGU_CODES, **INCHEON_SIGUNGU_CODES}
+df = collector.fetch_recent_months(
+    sigungu_codes=all_codes,
     months=12,
     save_path="data/raw_api_collected.csv"
 )
@@ -228,6 +289,77 @@ pipeline = DemandForecastingPipeline(
     }
 )
 ```
+
+---
+
+## 🌐 웹 대시보드 실행 (Flask)
+
+### 서버 실행
+
+```powershell
+python app.py
+```
+
+서버가 실행되면 브라우저에서 `http://localhost:5000` 으로 접속하면 대시보드가 표시됩니다.
+
+> `/api/collect`로 신규 데이터를 수집하려면 `.env` 또는 환경변수에 `API_KEY`가 설정되어 있어야 합니다.
+
+### API 엔드포인트
+
+| 메서드 | 경로 | 설명 |
+|---|---|---|
+| `GET` | `/` | 대시보드 페이지 (`templates/index.html`) |
+| `GET` | `/analytics` | 통계·분석 2페이지 — 시도별/지역별 차트·테이블 모음 (`templates/analytics.html`) |
+| `GET` | `/health` | 서버 상태 확인 |
+| `GET` | `/api/demand` | 인테리어 수요 점수 결과 조회 (`sido`, `top` 쿼리 파라미터로 필터링) |
+| `GET` | `/api/sido-summary` | 시도별 수요 점수 요약 조회 |
+| `POST` | `/api/collect` | 공공데이터 API로 실거래가 수집 후 파이프라인 재실행 (`months`, `sigungu_code` 파라미터) |
+| `GET` | `/api/search` | 단지명(`type=apt`) 또는 지역명(`type=region`) 검색 (`q` 파라미터) |
+| `POST` | `/api/chat` | 수요 점수 데이터 기반 AI 챗봇 (`message` 파라미터, 질의·응답은 `data/chat_history.db`에 기록) |
+
+#### 예시
+
+```powershell
+# 서울 지역 수요 점수 TOP 10 조회
+curl "http://localhost:5000/api/demand?sido=서울&top=10"
+
+# 단지명 검색
+curl "http://localhost:5000/api/search?q=현대&type=apt"
+
+# 최근 12개월 데이터 재수집 + 파이프라인 재실행
+curl -X POST "http://localhost:5000/api/collect" -H "Content-Type: application/json" -d "{\"months\": 12}"
+
+# 수요 점수 챗봇에게 질문
+curl -X POST "http://localhost:5000/api/chat" -H "Content-Type: application/json" -d "{\"message\": \"서초구 수요 점수 알려줘\"}"
+```
+
+### AI 챗봇 (대시보드 상단 고정)
+
+`인테리어_수요점수_결과.csv` / `시도별_수요집계_요약.csv` 데이터를 컨텍스트로
+**로컬 Ollama (qwen2.5:3b, GPU 구동)**에 전달해 지역별 수요 점수, 등급, 비교 등을 자연어로 질의응답합니다.
+
+- 아파트 단지명/법정동을 언급하면 실거래 데이터에서 관련 내역을 찾아 답변에 활용합니다.
+  오타나 띄어쓰기가 달라도(`레미안서초` → `래미안서초...`) 부분일치 + `difflib` 유사도 매칭으로 인식합니다.
+- 모든 질문/응답은 `data/chat_history.db`(SQLite, `chat_logs` 테이블)에 자동 기록됩니다.
+
+```powershell
+# Ollama 설치 후 모델 다운로드 (최초 1회)
+ollama pull qwen2.5:3b
+
+# Ollama 서버 실행 (보통 설치 시 자동 실행됨, GPU 자동 인식)
+ollama serve
+```
+
+기본적으로 `http://localhost:11434`의 Ollama 서버와 `qwen2.5:3b` 모델을 사용합니다.
+필요 시 환경변수로 변경할 수 있습니다.
+
+```
+# .env 파일 (선택)
+OLLAMA_HOST=http://localhost:11434
+CHAT_MODEL=qwen2.5:3b
+```
+
+> Ollama 서버가 실행 중이지 않으면 `/api/chat`은 연결 오류 메시지를 반환합니다.
 
 ---
 
@@ -284,15 +416,15 @@ pipeline = DemandForecastingPipeline(
 
 ---
 
-## 📊 분석 결과 (서울 기준, Old Apartment 기준)
+## 📊 분석 결과 (서울·경기·인천, Old Apartment 기준)
 
-| 순위 | 지역 | 수요 점수 | 거래건수 | 평균거래금액 |
-|---|---|---|---|---|
-| 1 | 서울 서초구 | 70.57 | 456건 | 3억 332만원 |
-| 2 | 서울 송파구 | 59.51 | 1,091건 | 2억 4,681만원 |
-| 3 | 서울 강남구 | 55.31 | 525건 | 2억 8,764만원 |
-| 4 | 서울 성북구 | 48.48 | 1,606건 | 8,984만원 |
-| 5 | 서울 광진구 | 45.65 | 262건 | 1억 8,026만원 |
+총 224,214건 수집 → 63개 시군구(서울 25 / 경기 29 / 인천 9) 분석 결과:
+
+| 시도 | 시군구 수 | 총 거래건수 | 평균 수요 점수 | 최고 수요 점수 | 총 신규입주 세대수 |
+|---|---|---|---|---|---|
+| 서울 | 25 | 9,719 | 32.79 | 61.15 | 27,158 |
+| 경기 | 29 | 17,192 | 26.71 | 55.91 | 54,704 |
+| 인천 | 9 | 3,558 | 23.97 | 35.92 | 15,161 |
 
 ---
 
@@ -301,10 +433,11 @@ pipeline = DemandForecastingPipeline(
 ```
 ✅ STEP 1   data/            CSV 데이터 확보 (국토부 + 한국부동산원)
 ✅ STEP 2   src/pipeline.py  인테리어 수요 점수 파이프라인 구축
-✅ STEP 3   src/collector.py 공공데이터 API 자동 수집 모듈 구축
-✅ STEP 4   dashboard/       인터랙티브 수요 대시보드
-⬜ STEP 5   notebooks/03     API 수집 → 파이프라인 end-to-end 연결
-⬜ STEP 6   자동화            cron 스케줄러로 매월 자동 갱신
+✅ STEP 3   src/collector.py 공공데이터 API 자동 수집 모듈 구축 (서울 → 경기·인천 확장)
+✅ STEP 4   templates/       인터랙티브 수요 대시보드 + 통계·분석 2페이지
+✅ STEP 5   app.py           Flask API 연동 — API 수집 → 파이프라인 end-to-end 연결
+✅ STEP 6   app.py           AI 챗봇 (오타 허용 단지 검색 + 대화 기록 SQLite 저장)
+⬜ STEP 7   자동화            cron 스케줄러로 매월 자동 갱신
 ```
 
 ---
@@ -322,5 +455,5 @@ pipeline = DemandForecastingPipeline(
 
 | 데이터 | 출처 | 수집 방식 |
 |---|---|---|
-| 아파트 매매 실거래가 | 국토교통부 실거래가 공개시스템 | API 자동 수집 (`collector.py`) |
-| 입주예정 물량 | 한국부동산원 주택공급정보 | CSV 수동 다운로드 |
+| 아파트 매매 실거래가 (서울·경기·인천 77개 시군구) | 국토교통부 실거래가 공개시스템 | API 자동 수집 (`collector.py`) |
+| 입주예정 물량 (전국 17개 시도) | 한국부동산원 주택공급정보 | CSV 수동 다운로드 |

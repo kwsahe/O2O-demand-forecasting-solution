@@ -1,0 +1,116 @@
+
+  <svg xmlns="http://www.w3.org/2000/svg" width="1368" height="768" viewBox="0 0 1368 768">
+    <defs>
+      <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stop-color="#08111f"/>
+        <stop offset="0.52" stop-color="#101827"/>
+        <stop offset="1" stop-color="#172033"/>
+      </linearGradient>
+      <pattern id="grid" width="48" height="48" patternUnits="userSpaceOnUse">
+        <path d="M 48 0 L 0 0 0 48" fill="none" stroke="#243449" stroke-width="1" opacity="0.55"/>
+      </pattern>
+      <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+        <feDropShadow dx="0" dy="12" stdDeviation="14" flood-color="#020617" flood-opacity="0.35"/>
+      </filter>
+    </defs>
+    <rect width="1368" height="768" fill="url(#bg)"/>
+    <rect width="1368" height="768" fill="url(#grid)" opacity="0.5"/>
+    <text x="70" y="76" font-size="38" font-weight="900" fill="#f8fafc">프로젝트 구성도</text>
+    <text x="72" y="114" font-size="21" font-weight="500" fill="#94a3b8">공공데이터 수집부터 수요 점수 산출, Flask API, Chart.js 대시보드까지의 시스템 구조</text>
+    <g filter="url(#shadow)">
+      
+    
+    <g>
+      <rect x="70" y="170" width="310" height="170" rx="18" fill="#0f172a" stroke="#334155" stroke-width="2"/>
+      <rect x="70" y="170" width="8" height="170" rx="4" fill="#f97316"/>
+      <text x="225" y="212" font-size="24" font-weight="800" fill="#f8fafc" text-anchor="middle">데이터 소스</text>
+      <text x="104" y="254" font-size="19" font-weight="500" fill="#cbd5e1">국토교통부 실거래가 API</text>
+<text x="104" y="282" font-size="19" font-weight="500" fill="#cbd5e1">한국부동산원 입주예정 CSV</text>
+    </g>
+  
+    
+    <g>
+      <rect x="500" y="150" width="320" height="210" rx="18" fill="#111827" stroke="#334155" stroke-width="2"/>
+      <rect x="500" y="150" width="8" height="210" rx="4" fill="#38bdf8"/>
+      <text x="660" y="192" font-size="24" font-weight="800" fill="#f8fafc" text-anchor="middle">수집 계층</text>
+      <text x="534" y="234" font-size="19" font-weight="500" fill="#cbd5e1">src/collector.py</text>
+<text x="534" y="262" font-size="19" font-weight="500" fill="#cbd5e1">requests + XML 파싱</text>
+<text x="534" y="290" font-size="19" font-weight="500" fill="#cbd5e1">최근 N개월 자동 수집</text>
+<text x="534" y="318" font-size="19" font-weight="500" fill="#cbd5e1">컬럼 정규화</text>
+    </g>
+  
+    
+    <g>
+      <rect x="940" y="150" width="360" height="210" rx="18" fill="#111827" stroke="#334155" stroke-width="2"/>
+      <rect x="940" y="150" width="8" height="210" rx="4" fill="#34d399"/>
+      <text x="1120" y="192" font-size="24" font-weight="800" fill="#f8fafc" text-anchor="middle">분석 파이프라인</text>
+      <text x="974" y="234" font-size="19" font-weight="500" fill="#cbd5e1">src/pipeline.py</text>
+<text x="974" y="262" font-size="19" font-weight="500" fill="#cbd5e1">pandas 전처리/집계</text>
+<text x="974" y="290" font-size="19" font-weight="500" fill="#cbd5e1">연식 세그먼트 분류</text>
+<text x="974" y="318" font-size="19" font-weight="500" fill="#cbd5e1">Min-Max + 가중합 점수</text>
+    </g>
+  
+    
+    <g>
+      <rect x="70" y="460" width="310" height="170" rx="18" fill="#0f172a" stroke="#334155" stroke-width="2"/>
+      <rect x="70" y="460" width="8" height="170" rx="4" fill="#a78bfa"/>
+      <text x="225" y="502" font-size="24" font-weight="800" fill="#f8fafc" text-anchor="middle">저장 데이터</text>
+      <text x="104" y="544" font-size="19" font-weight="500" fill="#cbd5e1">raw_api_collected.csv</text>
+<text x="104" y="572" font-size="19" font-weight="500" fill="#cbd5e1">수요점수 결과 CSV</text>
+<text x="104" y="600" font-size="19" font-weight="500" fill="#cbd5e1">시도별 요약 CSV</text>
+    </g>
+  
+    
+    <g>
+      <rect x="500" y="440" width="320" height="210" rx="18" fill="#111827" stroke="#334155" stroke-width="2"/>
+      <rect x="500" y="440" width="8" height="210" rx="4" fill="#fbbf24"/>
+      <text x="660" y="482" font-size="24" font-weight="800" fill="#f8fafc" text-anchor="middle">백엔드 API</text>
+      <text x="534" y="524" font-size="19" font-weight="500" fill="#cbd5e1">app.py / Flask</text>
+<text x="534" y="552" font-size="19" font-weight="500" fill="#cbd5e1">/api/demand</text>
+<text x="534" y="580" font-size="19" font-weight="500" fill="#cbd5e1">/api/collect</text>
+<text x="534" y="608" font-size="19" font-weight="500" fill="#cbd5e1">/api/search</text>
+    </g>
+  
+    
+    <g>
+      <rect x="940" y="440" width="360" height="210" rx="18" fill="#111827" stroke="#334155" stroke-width="2"/>
+      <rect x="940" y="440" width="8" height="210" rx="4" fill="#e879f9"/>
+      <text x="1120" y="482" font-size="24" font-weight="800" fill="#f8fafc" text-anchor="middle">대시보드</text>
+      <text x="974" y="524" font-size="19" font-weight="500" fill="#cbd5e1">templates/index.html</text>
+<text x="974" y="552" font-size="19" font-weight="500" fill="#cbd5e1">Chart.js 시각화</text>
+<text x="974" y="580" font-size="19" font-weight="500" fill="#cbd5e1">KPI / 랭킹 / 검색</text>
+<text x="974" y="608" font-size="19" font-weight="500" fill="#cbd5e1">지역 필터</text>
+    </g>
+  
+    
+    <path d="M 380 255 C 440 255, 440 255, 486 255" fill="none" stroke="#94a3b8" stroke-width="3"/>
+    <path d="M 482 247 L 500 255 L 482 263" fill="none" stroke="#94a3b8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  
+    
+    <path d="M 820 255 C 880 255, 880 255, 926 255" fill="none" stroke="#94a3b8" stroke-width="3"/>
+    <path d="M 922 247 L 940 255 L 922 263" fill="none" stroke="#94a3b8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  
+    
+    <path d="M 225 340 L 225 444" fill="none" stroke="#94a3b8" stroke-width="3"/>
+    <path d="M 217 442 L 225 460 L 233 442" fill="none" stroke="#94a3b8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  
+    
+    <path d="M 380 545 C 440 545, 440 545, 486 545" fill="none" stroke="#94a3b8" stroke-width="3"/>
+    <path d="M 482 537 L 500 545 L 482 553" fill="none" stroke="#94a3b8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  
+    
+    <path d="M 820 545 C 880 545, 880 545, 926 545" fill="none" stroke="#94a3b8" stroke-width="3"/>
+    <path d="M 922 537 L 940 545 L 922 553" fill="none" stroke="#94a3b8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  
+    
+    <path d="M 660 360 L 660 424" fill="none" stroke="#94a3b8" stroke-width="3"/>
+    <path d="M 652 422 L 660 440 L 668 422" fill="none" stroke="#94a3b8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  
+    
+    <path d="M 1120 360 C 1120 360, 1120 440, 1106 440" fill="none" stroke="#94a3b8" stroke-width="3"/>
+    <path d="M 1102 432 L 1120 440 L 1102 448" fill="none" stroke="#94a3b8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  
+  
+    </g>
+    <text x="1298" y="732" font-size="16" font-weight="600" fill="#64748b" text-anchor="end">O2O Demand Forecasting Solution</text>
+  </svg>
