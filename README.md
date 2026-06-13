@@ -117,7 +117,8 @@ O2O-Demand-Forecasting-Solution/
 ├── data/
 │   ├── 아파트(매매)_실거래가_20260311170739.csv            # 국토부 실거래가 (초기 입력용)
 │   ├── 한국부동산원_주택공급정보_입주예정물량정보_20251231.csv  # 입주예정 (초기 입력용)
-│   ├── raw_api_collected.csv                     # API 자동 수집 결과 (서울·경기·인천)
+│   ├── raw_api_collected.csv                     # 매매 실거래가 API 자동 수집 결과 (서울·경기·인천)
+│   ├── raw_rent_collected.csv                    # 전월세 실거래가 API 자동 수집 결과 (서울·경기·인천)
 │   ├── 인테리어_수요점수_결과.csv                  # 파이프라인 실행 결과 (시군구별)
 │   ├── 시도별_수요집계_요약.csv                    # 파이프라인 실행 결과 (시도별 요약)
 │   └── chat_history.db                           # 챗봇 질문/응답 기록 (SQLite, git 제외)
@@ -382,11 +383,12 @@ CHAT_MODEL=qwen2.5:3b
 
 | 지표 | 가중치 | 비즈니스 이유 |
 |---|---|---|
-| 거래건수 | 30% | 시장 볼륨 — 수요 규모 |
-| 거래금액 | 25% | 구매력 — 고가 지역일수록 고급 시공 |
-| 노후도 | 20% | 리모델링 시급성 |
-| 전용면적 | 15% | 시공 규모 — 매출 기여 |
+| 거래건수 | 25% | 매매 시장 볼륨 — 수요 규모 |
+| 거래금액 | 20% | 구매력 — 고가 지역일수록 고급 시공 |
+| 노후도 | 15% | 리모델링 시급성 |
+| 전용면적 | 10% | 시공 규모 — 매출 기여 |
 | 신규입주 | 10% | 신규 입주 수요 |
+| **전월세거래건수** | **20%** | **임대 수요 — 전월세 거래가 많을수록 신규 세입자의 입주 전 부분 인테리어 수요가 많음** |
 
 ---
 
@@ -396,23 +398,28 @@ CHAT_MODEL=qwen2.5:3b
 
 | 함수 | 역할 |
 |---|---|
-| `fetch_one(code, ym)` | 단일 구 + 단일 월 API 호출 |
-| `fetch_range(codes, start, end)` | 여러 구 × 연월 범위 순차 수집 |
-| `fetch_recent_months(months=12)` | 오늘 기준 최근 N개월 자동 수집 |
-| `normalize_columns(df)` | API 영문 컬럼 → pipeline.py 한글 컬럼 변환 |
+| `fetch_one(code, ym)` | 단일 구 + 단일 월 매매 실거래가 API 호출 |
+| `fetch_one_rent(code, ym)` | 단일 구 + 단일 월 전월세 실거래가 API 호출 |
+| `fetch_range(codes, start, end, fetch_fn=...)` | 여러 구 × 연월 범위 순차 수집 (매매/전월세 공용) |
+| `fetch_recent_months(months=12)` | 오늘 기준 최근 N개월 매매 실거래가 자동 수집 |
+| `fetch_recent_months_rent(months=12)` | 오늘 기준 최근 N개월 전월세 실거래가 자동 수집 |
+| `normalize_columns(df)` | 매매 API 영문 컬럼 → pipeline.py 한글 컬럼 변환 |
+| `normalize_rent_columns(df)` | 전월세 API 영문 컬럼 → pipeline.py 한글 컬럼 변환 |
 
-**사용 API:** 국토교통부 아파트매매 실거래 상세 자료  
-**엔드포인트:** `https://apis.data.go.kr/1613000/RTMSDataSvcAptTradeDev/getRTMSDataSvcAptTradeDev`
+**사용 API**
+- 매매: `https://apis.data.go.kr/1613000/RTMSDataSvcAptTradeDev/getRTMSDataSvcAptTradeDev`
+- 전월세: `https://apis.data.go.kr/1613000/RTMSDataSvcAptRent/getRTMSDataSvcAptRent` (동일한 `API_KEY` 사용)
 
 ### `pipeline.py` — 수요 점수 산출 파이프라인
 
 | 메서드 | 역할 |
 |---|---|
-| `load_data()` | CSV 로드 |
-| `preprocess_transactions()` | 실거래가 정제 + 노후도 계산 + 세그먼트 분류 |
+| `load_data()` | 매매/입주예정/전월세 CSV 또는 DataFrame 로드 |
+| `preprocess_transactions()` | 매매 실거래가 정제 + 노후도 계산 + 세그먼트 분류 |
+| `preprocess_rent()` | 전월세 실거래가 정제 + 노후도 계산 + 세그먼트 분류 (없으면 0건 처리) |
 | `preprocess_supply()` | 입주예정 정제 + 연도 필터링 |
-| `aggregate_and_merge()` | 시군구 단위 집계 + LEFT JOIN |
-| `calculate_demand_score()` | 5개 지표 Min-Max 정규화 후 가중합산 |
+| `aggregate_and_merge()` | 시군구 단위 집계 + LEFT JOIN (매매 + 입주예정 + 전월세) |
+| `calculate_demand_score()` | 6개 지표 Min-Max 정규화 후 가중합산 |
 
 ---
 
@@ -456,4 +463,5 @@ CHAT_MODEL=qwen2.5:3b
 | 데이터 | 출처 | 수집 방식 |
 |---|---|---|
 | 아파트 매매 실거래가 (서울·경기·인천 77개 시군구) | 국토교통부 실거래가 공개시스템 | API 자동 수집 (`collector.py`) |
+| 아파트 전월세 실거래가 (서울·경기·인천 77개 시군구) | 국토교통부 실거래가 공개시스템 | API 자동 수집 (`collector.py`) |
 | 입주예정 물량 (전국 17개 시도) | 한국부동산원 주택공급정보 | CSV 수동 다운로드 |

@@ -117,7 +117,7 @@ def collect():
         else:
             codes = SEOUL_SIGUNGU_CODES
 
-        # 수집 & 정규화
+        # 매매 실거래가 수집 & 정규화
         df_raw = collector.fetch_recent_months(
             sigungu_codes=codes,
             months=months,
@@ -125,11 +125,21 @@ def collect():
         )
         df_normalized = collector.normalize_columns(df_raw)
 
+        # 전월세 실거래가 수집 & 정규화
+        df_rent_raw = collector.fetch_recent_months_rent(
+            sigungu_codes=codes,
+            months=months,
+            save_path="data/raw_rent_collected.csv"
+        )
+        df_rent_normalized = (
+            collector.normalize_rent_columns(df_rent_raw) if not df_rent_raw.empty else None
+        )
+
         # 파이프라인 실행
         pipeline = DemandForecastingPipeline(
             supply_path="data/한국부동산원_주택공급정보_입주예정물량정보_20251231.csv"
         )
-        df_result, sido_summary = pipeline.run(df_transactions=df_normalized)
+        df_result, sido_summary = pipeline.run(df_transactions=df_normalized, df_rent=df_rent_normalized)
 
         # 결과 저장
         df_result.to_csv("data/인테리어_수요점수_결과.csv", index=False, encoding="utf-8-sig")
@@ -249,6 +259,53 @@ def find_apartment_context(message: str, raw_path: str = "data/raw_api_collected
         + matched.to_csv(index=False)
     )
 
+def find_region_context(message: str, df: pd.DataFrame, sido_summary: pd.DataFrame) -> str:
+    """메시지에 언급된 시군구/시도를 찾아 해당 행만 따로 추려 컨텍스트로 제공한다.
+    전체 표를 한꺼번에 주면 작은 모델이 시도 합계와 시군구 개별값을 혼동하므로,
+    질문 대상 지역의 정확한 행을 별도로 강조해 전달한다."""
+    import re
+
+    tokens = {t for t in re.split(r"[^\w가-힣]+", message) if len(t) >= 2 and t not in CHAT_STOPWORDS}
+    if not tokens:
+        return ""
+
+    sigungu_mask = pd.Series(False, index=df.index)
+    sido_mask = pd.Series(False, index=sido_summary.index)
+    for token in tokens:
+        sigungu_mask |= df["시군구"].str.contains(token, na=False)
+        sido_mask |= sido_summary["시도"].str.contains(token, na=False)
+
+    parts = []
+    matched_sigungu = df[sigungu_mask]
+    if not matched_sigungu.empty:
+        parts.append(
+            "[질문에 언급된 시군구의 정확한 데이터 — 시군구 단위 질문에는 반드시 이 표의 값을 사용하세요]\n"
+            + matched_sigungu.to_csv(index=False)
+        )
+
+    matched_sido = sido_summary[sido_mask]
+    if not matched_sido.empty:
+        parts.append(
+            "[질문에 언급된 시/도의 전체 요약 데이터 — 시/도 전체 합계·평균값이며, 개별 시군구의 값이 아닙니다]\n"
+            + matched_sido.to_csv(index=False)
+        )
+
+    if not parts:
+        return ""
+    return "\n\n" + "\n\n".join(parts)
+
+
+def get_recent_chat_history(limit: int = 3):
+    """최근 대화 기록을 가져와 멀티턴 대화(이어지는 질문)를 지원한다."""
+    conn = sqlite3.connect(CHAT_DB_PATH)
+    rows = conn.execute(
+        "SELECT user_message, bot_answer FROM chat_logs WHERE status = 'ok' ORDER BY id DESC LIMIT ?",
+        (limit,),
+    ).fetchall()
+    conn.close()
+    return list(reversed(rows))
+
+
 @app.route("/api/chat", methods=["POST"])
 def chat():
     message = ""
@@ -274,6 +331,17 @@ def chat():
             "해당 단지의 최근 거래금액, 건축년도, 전용면적 등 정보를 알려주세요. "
             "필요하면 예시를 들어 설명하고, 적절히 이모지를 곁들여도 좋습니다. "
             "데이터에 없는 내용은 추측하지 말고 모른다고 솔직하게 답하세요.\n\n"
+            "[매우 중요 — 표 혼동 금지 규칙]\n"
+            "이 시스템에는 두 종류의 표가 있습니다. 절대 서로 혼동하지 마세요.\n"
+            "  1) [시군구별 인테리어 수요 점수]: '시군구'(예: 서울특별시 서초구) 단위의 개별 데이터입니다. "
+            "사용자가 특정 시(군/구) 이름을 언급하면 반드시 이 표에서 해당 행만 찾아 답하세요.\n"
+            "  2) [시도별 요약]: '시도'(서울/경기/인천 등) 전체의 합계·평균·최고값입니다. "
+            "이 값들은 그 시/도에 속한 여러 시군구를 모두 합치거나 평균낸 값이므로, "
+            "개별 시군구(예: 서초구)의 거래건수나 점수로 절대 사용하면 안 됩니다. "
+            "예를 들어 '서울'의 총거래건수·총신규입주세대수는 서울 전체 25개 구의 합계이며, "
+            "'서초구' 한 곳의 값이 아닙니다.\n"
+            "  3) 만약 아래에 [질문에 언급된 시군구의 정확한 데이터] 또는 [질문에 언급된 시/도의 전체 요약 데이터] 블록이 있다면, "
+            "그 블록의 값을 최우선으로 사용하세요.\n\n"
             "[인테리어 수요 점수 산출 방식]\n"
             "아파트 실거래 데이터를 분석해 '어느 지역에 인테리어 수요가 얼마나 있는가'를 0~100점으로 수치화한 지표입니다. "
             "점수가 높을수록 리모델링 수요가 많고, 구매력이 높고, 거래가 활발한 지역입니다.\n\n"
@@ -284,39 +352,51 @@ def chat():
             "  - Old_Apartment ★ (15~20년, 핵심 타겟): 욕실·주방·바닥재 등 전면 리모델링 수요. "
             "1기 신도시 재정비 연식대와 겹쳐 리모델링 관심이 가장 높고 고단가 시공 상품 구매 가능성이 높음\n"
             "  - Very_Old_Apartment (21년+): 재건축 검토 단계, 인테리어 시공 수요 낮음\n\n"
-            "2단계. 5가지 지표를 0~100점으로 정규화(Min-Max) 후 가중치를 곱해 합산\n"
-            "  - 거래건수 (가중치 30%): 시장 활성도, 도달 가능 고객 수 — 가장 중요\n"
-            "  - 거래금액 (가중치 25%): 구매력, 고단가 시공 가능성\n"
-            "  - 노후도 (가중치 20%): 리모델링 시급성\n"
-            "  - 전용면적 (가중치 15%): 시공 규모, 매출 기여도\n"
-            "  - 신규입주 (가중치 10%): 신규 입주 세대의 인테리어 수요\n\n"
+            "2단계. 6가지 지표를 0~100점으로 정규화(Min-Max) 후 가중치를 곱해 합산\n"
+            "  - 거래건수 (가중치 25%): 매매 시장 활성도, 도달 가능 고객 수\n"
+            "  - 거래금액 (가중치 20%): 구매력, 고단가 시공 가능성\n"
+            "  - 노후도 (가중치 15%): 리모델링 시급성\n"
+            "  - 전용면적 (가중치 10%): 시공 규모, 매출 기여도\n"
+            "  - 신규입주 (가중치 10%): 신규 입주 세대의 인테리어 수요\n"
+            "  - 전월세거래건수 (가중치 20%): 임대(전월세) 거래가 많을수록 새 세입자가 입주 전 부분 인테리어를 하는 수요가 많음\n\n"
             "3단계. 최종 점수 계산식\n"
-            "  인테리어_수요점수 = 거래건수점수×0.30 + 거래금액점수×0.25 + 노후도점수×0.20 + 면적점수×0.15 + 신규입주점수×0.10\n\n"
+            "  인테리어_수요점수 = 거래건수점수×0.25 + 거래금액점수×0.20 + 노후도점수×0.15 + 면적점수×0.10 "
+            "+ 신규입주점수×0.10 + 전월세거래건수점수×0.20\n\n"
             "등급 해석\n"
             "  - S등급 (60~100점): 최우선 타겟, 마케팅 예산 집중\n"
             "  - A등급 (30~59점): 중간 타겟, 선별적 마케팅\n"
             "  - B등급 (0~29점): 관찰 지역, 투자 보류\n\n"
-            "[데이터 컬럼 설명]\n"
-            "- 인테리어_수요점수: 위 산출 방식으로 계산된 0~100점 값\n"
-            "- 거래건수: 노후도 15~20년(Old_Apartment) 세그먼트의 거래 건수\n"
+            "[데이터 컬럼 설명 — 시군구별 표]\n"
+            "- 인테리어_수요점수: 위 산출 방식으로 계산된 0~100점 값 (해당 시군구 자체의 점수)\n"
+            "- 거래건수: 해당 시군구의 노후도 15~20년(Old_Apartment) 세그먼트 거래 건수\n"
             "- 평균거래금액_만원 / 평균노후도_년 / 평균면적_m2: 해당 시군구 Old_Apartment 평균값\n"
-            "- 신규입주_세대수 / 입주단지수: 입주예정 신규 세대수 / 단지 수\n\n"
+            "- 신규입주_세대수 / 입주단지수: 해당 시군구의 입주예정 신규 세대수 / 단지 수\n"
+            "- 전월세거래건수: 해당 시군구의 노후도 15~20년(Old_Apartment) 세그먼트 전월세 거래 건수\n\n"
+            "[데이터 컬럼 설명 — 시도별 요약 표]\n"
+            "- 시군구수: 해당 시/도에 속한 시군구의 개수\n"
+            "- 총거래건수: 해당 시/도에 속한 모든 시군구 거래건수의 합계\n"
+            "- 평균수요점수 / 최고수요점수: 해당 시/도에 속한 시군구들의 인테리어_수요점수 평균값 / 최고값\n"
+            "- 총신규입주세대수: 해당 시/도에 속한 모든 시군구 신규입주_세대수의 합계\n\n"
             "[시군구별 인테리어 수요 점수 (수요 점수 높은 순)]\n"
             f"{df.to_csv(index=False)}\n"
             "[시도별 요약]\n"
             f"{sido_summary.to_csv(index=False)}"
+            f"{find_region_context(message, df, sido_summary)}"
             f"{find_apartment_context(message)}\n\n"
             "반드시 한국어로만 답변하세요. 다른 언어(영어, 중국어, 일본어 등)는 절대 사용하지 마세요."
         )
+
+        messages = [{"role": "system", "content": system_prompt}]
+        for past_user, past_answer in get_recent_chat_history():
+            messages.append({"role": "user", "content": past_user})
+            messages.append({"role": "assistant", "content": past_answer})
+        messages.append({"role": "user", "content": message})
 
         res = requests.post(
             f"{OLLAMA_HOST}/api/chat",
             json={
                 "model": CHAT_MODEL,
-                "messages": [
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": message},
-                ],
+                "messages": messages,
                 "stream": False,
             },
             timeout=120,

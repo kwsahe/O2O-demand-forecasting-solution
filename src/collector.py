@@ -130,11 +130,10 @@ class ApartmentDataCollector:
         else:
             self._pdr = None
 
-    def fetch_one(self, sigungu_code: str, year_month: str) -> pd.DataFrame:
+    def _fetch_one_from(self, url: str, sigungu_code: str, year_month: str) -> pd.DataFrame:
         import requests
         import xml.etree.ElementTree as ET
 
-        url = "https://apis.data.go.kr/1613000/RTMSDataSvcAptTradeDev/getRTMSDataSvcAptTradeDev"
         params = {
         "serviceKey": self.api_key,
         "LAWD_CD":    sigungu_code,
@@ -168,13 +167,23 @@ class ApartmentDataCollector:
         except Exception as e:
             print(f"  [ERROR] {sigungu_code} / {year_month} 수집 실패: {e}")
             return pd.DataFrame()
-        
+
+    def fetch_one(self, sigungu_code: str, year_month: str) -> pd.DataFrame:
+        url = "https://apis.data.go.kr/1613000/RTMSDataSvcAptTradeDev/getRTMSDataSvcAptTradeDev"
+        return self._fetch_one_from(url, sigungu_code, year_month)
+
+    def fetch_one_rent(self, sigungu_code: str, year_month: str) -> pd.DataFrame:
+        """아파트 전월세 실거래가 단건 수집 (국토교통부_아파트 전월세 실거래가 자료)"""
+        url = "https://apis.data.go.kr/1613000/RTMSDataSvcAptRent/getRTMSDataSvcAptRent"
+        return self._fetch_one_from(url, sigungu_code, year_month)
+
     def fetch_range(
         self,
         sigungu_codes,
         start_ym: str,
         end_ym: str,
         save_path: str = None,
+        fetch_fn=None,
     ) -> pd.DataFrame:
         if isinstance(sigungu_codes, dict):
             code_list = list(sigungu_codes.values())
@@ -182,6 +191,8 @@ class ApartmentDataCollector:
         else:
             code_list = sigungu_codes
             name_map  = {}
+
+        fetch_fn = fetch_fn or self.fetch_one
 
         months    = generate_year_months(start_ym, end_ym)
         total     = len(code_list) * len(months)
@@ -197,11 +208,11 @@ class ApartmentDataCollector:
                 done += 1
                 print(f"  [{done:>3}/{total}] {name}({code}) / {ym} ...", end=" ")
 
-                df_chunk = self.fetch_one(sigungu_code=code, year_month=ym)
+                df_chunk = fetch_fn(sigungu_code=code, year_month=ym)
 
                 if not df_chunk.empty:
                     collected.append(df_chunk)
-                    print(f"{len(df_chunk):,}건 ✓")
+                    print(f"{len(df_chunk):,}건 OK")
                 else:
                     print("0건")
 
@@ -210,7 +221,7 @@ class ApartmentDataCollector:
             return pd.DataFrame()
 
         df_all = pd.concat(collected, ignore_index=True)
-        print(f"\n[COLLECT] 완료 — 총 {len(df_all):,}건 수집")
+        print(f"\n[COLLECT] 완료 - 총 {len(df_all):,}건 수집")
 
         if save_path:
             df_all.to_csv(save_path, index=False, encoding="utf-8-sig")
@@ -238,6 +249,59 @@ class ApartmentDataCollector:
             save_path=save_path,
         )
 
+    def fetch_recent_months_rent(
+        self,
+        sigungu_codes=None,
+        months: int = 12,
+        save_path: str = None,
+    ) -> pd.DataFrame:
+        """최근 N개월 아파트 전월세 실거래가 자동 수집 (국토교통부_아파트 전월세 실거래가 자료)"""
+        if sigungu_codes is None:
+            sigungu_codes = SEOUL_SIGUNGU_CODES
+
+        today    = datetime.today()
+        end_ym   = today.strftime("%Y%m")
+        start_ym = (today - relativedelta(months=months - 1)).strftime("%Y%m")
+
+        print(f"[AUTO][전월세] 최근 {months}개월: {start_ym} ~ {end_ym}")
+        return self.fetch_range(
+            sigungu_codes=sigungu_codes,
+            start_ym=start_ym,
+            end_ym=end_ym,
+            save_path=save_path,
+            fetch_fn=self.fetch_one_rent,
+        )
+
+    def normalize_rent_columns(self, df: pd.DataFrame) -> pd.DataFrame:
+        """전월세 API 영문 컬럼 → pipeline.py 한글 컬럼 변환"""
+        rename_map = {
+        "aptNm":      "단지명",
+        "excluUseAr": "전용면적(㎡)",
+        "deposit":    "보증금(만원)",
+        "monthlyRent": "월세(만원)",
+        "buildYear":  "건축년도",
+        "umdNm":      "법정동",
+        "dealYear":   "년",
+        "dealMonth":  "월",
+        }
+        df = df.rename(columns=rename_map)
+
+        if "수집_시군구코드" in df.columns and "법정동" in df.columns:
+            df["시군구"] = df["수집_시군구코드"].map(
+            lambda c: SIGUNGU_CODE_TO_FULL_NAME.get(str(c), str(c)) + " "
+            ) + df["법정동"].fillna("")
+
+        if "년" in df.columns and "월" in df.columns:
+            df["계약년월"] = (
+            df["년"].astype(str).str.zfill(4) +
+            df["월"].astype(str).str.zfill(2)
+            )
+
+        keep = ["시군구", "단지명", "전용면적(㎡)", "계약년월",
+            "보증금(만원)", "월세(만원)", "건축년도",
+            "수집_시군구코드", "수집_연월"]
+        return df[[c for c in keep if c in df.columns]]
+
     def normalize_columns(self, df: pd.DataFrame) -> pd.DataFrame:
         rename_map = {
         "aptNm":      "단지명",
@@ -253,7 +317,7 @@ class ApartmentDataCollector:
 
         if "수집_시군구코드" in df.columns and "법정동" in df.columns:
             df["시군구"] = df["수집_시군구코드"].map(
-            lambda c: SIGUNGU_CODE_TO_FULL_NAME.get(c, c) + " "
+            lambda c: SIGUNGU_CODE_TO_FULL_NAME.get(str(c), str(c)) + " "
             ) + df["법정동"].fillna("")
 
         if "년" in df.columns and "월" in df.columns:
@@ -290,4 +354,4 @@ if __name__ == "__main__":
         print(f"\n[NORMALIZE] 변환 후 컬럼: {df_norm.columns.tolist()}")
         print(df_norm.head(3).to_string())
     else:
-        print("  [!] 데이터 없음 — API 키 또는 인터넷 연결 확인")
+        print("  [!] 데이터 없음 - API 키 또는 인터넷 연결 확인")
