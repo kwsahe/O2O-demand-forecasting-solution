@@ -330,7 +330,117 @@ class ApartmentDataCollector:
             "거래금액(만원)", "건축년도", "도로명",
             "수집_시군구코드", "수집_연월"]
         return df[[c for c in keep if c in df.columns]]
-    
+
+    def fetch_renovation(self, sigungu_code: str, bdong_code: str) -> pd.DataFrame:
+        """건축HUB 건축인허가정보 - 대수선 이력 조회 (읍면동 단위)
+
+        주의: 이 API는 시군구 코드만으로는 조회가 불가능하며,
+        법정동(읍면동) 코드까지 함께 지정해야 합니다.
+        전 지역 수집을 위해서는 시군구별 법정동 코드 목록(LEGAL_DONG_CODES)이 필요합니다.
+        """
+        import requests
+
+        url = "https://apis.data.go.kr/1613000/ArchPmsHubService/getApImprprInfo"
+        params = {
+            "serviceKey": self.api_key,
+            "sigunguCd": sigungu_code,
+            "bjdongCd": bdong_code,
+            "numOfRows": 1000,
+            "pageNo": 1,
+            "_type": "json",
+        }
+
+        try:
+            res = requests.get(url, params=params, timeout=10)
+            res_json = res.json()
+
+            header = res_json.get("response", {}).get("header", {})
+            if header.get("resultCode") != "00":
+                print(f"  [API ERROR] {header.get('resultCode')}: {header.get('resultMsg')}")
+                return pd.DataFrame()
+
+            items = res_json["response"]["body"]["items"]
+            if not items:
+                return pd.DataFrame()
+            item_list = items.get("item", [])
+            if isinstance(item_list, dict):
+                item_list = [item_list]
+            if not item_list:
+                return pd.DataFrame()
+
+            df = pd.DataFrame(item_list)
+            time.sleep(self.request_interval)
+            df["수집_시군구코드"] = sigungu_code
+            df["수집_법정동코드"] = bdong_code
+            return df
+        except Exception as e:
+            print(f"  [ERROR] {sigungu_code}/{bdong_code} 대수선 이력 수집 실패: {e}")
+            return pd.DataFrame()
+
+    def fetch_renovation_for_region(
+        self,
+        legal_dong_codes: dict,
+        save_path: str = None,
+    ) -> pd.DataFrame:
+        """시군구별 법정동 코드 목록을 받아 대수선 이력을 일괄 수집
+
+        legal_dong_codes: {시군구코드: [법정동코드, ...]} 형태의 dict
+        (TODO: 법정동 코드 목록 데이터 확보 후 채워서 사용)
+        """
+        collected = []
+        total = sum(len(v) for v in legal_dong_codes.values())
+        done = 0
+
+        print(f"[COLLECT][대수선] {len(legal_dong_codes)}개 시군구, 총 {total}개 법정동 조회 시작")
+
+        for sigungu_code, bdong_list in legal_dong_codes.items():
+            for bdong_code in bdong_list:
+                done += 1
+                print(f"  [{done:>4}/{total}] {sigungu_code}/{bdong_code} ...", end=" ")
+                df_chunk = self.fetch_renovation(sigungu_code, bdong_code)
+                if not df_chunk.empty:
+                    collected.append(df_chunk)
+                    print(f"{len(df_chunk):,}건 OK")
+                else:
+                    print("0건")
+
+        if not collected:
+            print("[WARNING] 수집된 대수선 데이터가 없습니다.")
+            return pd.DataFrame()
+
+        df_all = pd.concat(collected, ignore_index=True)
+        print(f"\n[COLLECT][대수선] 완료 - 총 {len(df_all):,}건 수집")
+
+        if save_path:
+            df_all.to_csv(save_path, index=False, encoding="utf-8-sig")
+            print(f"[SAVE]    {save_path} 저장 완료")
+        return df_all
+
+    def normalize_renovation_columns(self, df: pd.DataFrame) -> pd.DataFrame:
+        """대수선 이력 API 컬럼 → 시군구 단위 집계용 컬럼 정리"""
+        if df.empty:
+            return df
+
+        rename_map = {
+            "대수선구분코드명":   "대수선구분",
+            "대수선변경구분코드명": "대수선변경구분",
+            "대지위치":         "대지위치",
+            "관리허가대장PK":    "건물PK",
+            "건물명":          "건물명",
+            "생성일자":         "생성일자",
+        }
+        df = df.rename(columns=rename_map)
+
+        if "수집_시군구코드" in df.columns:
+            df["시군구"] = df["수집_시군구코드"].map(
+                lambda c: SIGUNGU_CODE_TO_FULL_NAME.get(str(c), str(c))
+            )
+
+        keep = ["시군구", "대수선구분", "대수선변경구분", "대지위치",
+            "건물PK", "건물명", "생성일자",
+            "수집_시군구코드", "수집_법정동코드"]
+        return df[[c for c in keep if c in df.columns]]
+
 if __name__ == "__main__":
     import sys
 

@@ -500,6 +500,7 @@
                     <th style="width:44px;">#</th>
                     <th>지역</th>
                     <th>거래건수</th>
+                    <th>전월세거래건수</th>
                     <th>평균거래금액</th>
                     <th>평균노후도</th>
                     <th style="width:200px;">수요 점수</th>
@@ -567,7 +568,7 @@
             <div style="font-size:12px;color:var(--text2);margin-bottom:12px;">각 지표를 0~100점으로 변환한 뒤, 가중치를 곱해 합산해요.</div>
             <div style="display:flex;flex-direction:column;gap:7px;">
                 <div style="background:var(--surface2);border-radius:7px;padding:10px 12px;display:flex;align-items:center;gap:10px;">
-                    <div style="font-family:var(--mono);font-size:15px;font-weight:500;color:var(--accent);min-width:36px;">30%</div>
+                    <div style="font-family:var(--mono);font-size:15px;font-weight:500;color:var(--accent);min-width:36px;">25%</div>
                     <div>
                         <div style="font-size:12px;color:var(--text);font-weight:500;">거래건수</div>
                         <div style="font-size:11px;color:var(--muted);">시장 활성도, 도달 고객 수</div>
@@ -575,7 +576,7 @@
                     <div class="score-badge" style="margin-left:auto;background:rgba(249,115,22,.12);color:var(--accent);">최중요</div>
                 </div>
                 <div style="background:var(--surface2);border-radius:7px;padding:10px 12px;display:flex;align-items:center;gap:10px;">
-                    <div style="font-family:var(--mono);font-size:15px;font-weight:500;color:var(--accent2);min-width:36px;">25%</div>
+                    <div style="font-family:var(--mono);font-size:15px;font-weight:500;color:var(--accent2);min-width:36px;">20%</div>
                     <div>
                         <div style="font-size:12px;color:var(--text);font-weight:500;">거래금액</div>
                         <div style="font-size:11px;color:var(--muted);">구매력, 고단가 시공 가능성</div>
@@ -585,26 +586,34 @@
                 <div style="background:var(--surface2);border-radius:7px;padding:10px 12px;display:flex;align-items:center;gap:10px;">
                     <div style="font-family:var(--mono);font-size:15px;font-weight:500;color:var(--blue);min-width:36px;">20%</div>
                     <div>
-                        <div style="font-size:12px;color:var(--text);font-weight:500;">노후도</div>
-                        <div style="font-size:11px;color:var(--muted);">리모델링 시급성</div>
+                        <div style="font-size:12px;color:var(--text);font-weight:500;">전월세거래건수</div>
+                        <div style="font-size:11px;color:var(--muted);">임대 수요, 세입자 인테리어 잠재력</div>
                     </div>
-                    <div class="score-badge" style="margin-left:auto;background:rgba(56,189,248,.12);color:var(--blue);">시급성</div>
+                    <div class="score-badge" style="margin-left:auto;background:rgba(56,189,248,.12);color:var(--blue);">임대수요</div>
                 </div>
                 <div style="background:var(--surface2);border-radius:7px;padding:10px 12px;display:flex;align-items:center;gap:10px;">
                     <div style="font-family:var(--mono);font-size:15px;font-weight:500;color:var(--green);min-width:36px;">15%</div>
                     <div>
-                        <div style="font-size:12px;color:var(--text);font-weight:500;">전용면적</div>
-                        <div style="font-size:11px;color:var(--muted);">시공 규모, 단가 결정</div>
+                        <div style="font-size:12px;color:var(--text);font-weight:500;">노후도</div>
+                        <div style="font-size:11px;color:var(--muted);">리모델링 시급성</div>
                     </div>
-                    <div class="score-badge" style="margin-left:auto;background:rgba(52,211,153,.12);color:var(--green);">시공규모</div>
+                    <div class="score-badge" style="margin-left:auto;background:rgba(52,211,153,.12);color:var(--green);">시급성</div>
                 </div>
                 <div style="background:var(--surface2);border-radius:7px;padding:10px 12px;display:flex;align-items:center;gap:10px;">
                     <div style="font-family:var(--mono);font-size:15px;font-weight:500;color:var(--purple);min-width:36px;">10%</div>
                     <div>
+                        <div style="font-size:12px;color:var(--text);font-weight:500;">전용면적</div>
+                        <div style="font-size:11px;color:var(--muted);">시공 규모, 단가 결정</div>
+                    </div>
+                    <div class="score-badge" style="margin-left:auto;background:rgba(167,139,250,.12);color:var(--purple);">시공규모</div>
+                </div>
+                <div style="background:var(--surface2);border-radius:7px;padding:10px 12px;display:flex;align-items:center;gap:10px;">
+                    <div style="font-family:var(--mono);font-size:15px;font-weight:500;color:var(--red);min-width:36px;">10%</div>
+                    <div>
                         <div style="font-size:12px;color:var(--text);font-weight:500;">신규입주</div>
                         <div style="font-size:11px;color:var(--muted);">신규 세대 인테리어 수요</div>
                     </div>
-                    <div class="score-badge" style="margin-left:auto;background:rgba(167,139,250,.12);color:var(--purple);">신규수요</div>
+                    <div class="score-badge" style="margin-left:auto;background:rgba(248,113,113,.12);color:var(--red);">신규수요</div>
                 </div>
             </div>
         </div>
@@ -621,11 +630,12 @@
                 <div style="font-size:11px;color:var(--muted);margin-bottom:8px;">최종 점수 계산식</div>
                 <div style="font-family:var(--mono);font-size:12px;color:var(--text);line-height:2.1;">
                     수요점수 =<br>
-                    &nbsp;&nbsp;거래건수점수 × <span style="color:var(--accent);">0.30</span><br>
-                    &nbsp;+ 거래금액점수 × <span style="color:var(--accent2);">0.25</span><br>
-                    &nbsp;+ 노후도점수 &nbsp;&nbsp;× <span style="color:var(--blue);">0.20</span><br>
-                    &nbsp;+ 면적점수 &nbsp;&nbsp;&nbsp;&nbsp;× <span style="color:var(--green);">0.15</span><br>
-                    &nbsp;+ 신규입주점수 × <span style="color:var(--purple);">0.10</span>
+                    &nbsp;&nbsp;거래건수점수 × <span style="color:var(--accent);">0.25</span><br>
+                    &nbsp;+ 거래금액점수 × <span style="color:var(--accent2);">0.20</span><br>
+                    &nbsp;+ 전월세거래건수점수 × <span style="color:var(--blue);">0.20</span><br>
+                    &nbsp;+ 노후도점수 &nbsp;&nbsp;× <span style="color:var(--green);">0.15</span><br>
+                    &nbsp;+ 면적점수 &nbsp;&nbsp;&nbsp;&nbsp;× <span style="color:var(--purple);">0.10</span><br>
+                    &nbsp;+ 신규입주점수 × <span style="color:var(--red);">0.10</span>
                 </div>
             </div>
             <!-- 예시 -->
@@ -926,6 +936,7 @@ function resetTableHead() {
         <th style="width:44px;">#</th>
         <th>지역</th>
         <th>거래건수</th>
+        <th>전월세거래건수</th>
         <th>평균거래금액</th>
         <th>평균노후도</th>
         <th style="width:200px;">수요 점수</th>
@@ -950,6 +961,7 @@ function updateTable(data) {
             <td style="font-family:var(--mono);font-size:11px;">${rankLabel}</td>
             <td style="font-weight:${i < 3 ? '500' : '400'};">${d.시도} ${d.시군구}</td>
             <td style="font-family:var(--mono);color:var(--text2);">${(d.거래건수 || 0).toLocaleString()}건</td>
+            <td style="font-family:var(--mono);color:var(--text2);">${(d.전월세거래건수 || 0).toLocaleString()}건</td>
             <td style="font-family:var(--mono);color:var(--text2);">${Math.round(d.평균거래금액_만원 || 0).toLocaleString()}만</td>
             <td style="font-family:var(--mono);color:var(--text2);">${d.평균노후도_년}년</td>
             <td>
