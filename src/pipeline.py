@@ -13,12 +13,13 @@ SEGMENT_RULES = {
 }
 
 SCORE_WEIGHTS = {
-    "거래건수":     0.25,
-    "거래금액":     0.20,
+    "거래건수":     0.20,
+    "거래금액":     0.15,
     "노후도":       0.15,
     "면적":         0.10,
     "신규입주":     0.10,
     "전월세거래건수": 0.20,
+    "대수선이력":   0.10,
 }
 
 def extract_sido(address: str) -> str:
@@ -55,6 +56,7 @@ class DemandForecastingPipeline:
         transactions_path: str = None,
         supply_path: str = None,
         rent_path: str = None,
+        renovation_path: str = "data/raw_renovation_collected.csv",
         reference_year: int = REFERENCE_YEAR,
         supply_year_range: tuple = ("2025", "2026"),
         target_segment: str = "Old_Apartment",
@@ -63,6 +65,7 @@ class DemandForecastingPipeline:
         self.transactions_path = transactions_path
         self.supply_path = supply_path
         self.rent_path = rent_path
+        self.renovation_path = renovation_path
         self.reference_year = reference_year
         self.supply_year_range = supply_year_range
         self.target_segment = target_segment
@@ -71,6 +74,7 @@ class DemandForecastingPipeline:
         self.df_transactions = None
         self.df_supply = None
         self.df_rent = None
+        self.df_renovation = None
         self.df_processed = None
 
     def load_data(self, df_transactions = None, df_rent = None):
@@ -98,6 +102,16 @@ class DemandForecastingPipeline:
             print(f"[LOAD] 전월세 CSV 로드: {len(self.df_rent):,}건")
         else:
             self.df_rent = None
+
+        if self.renovation_path:
+            try:
+                self.df_renovation = pd.read_csv(self.renovation_path, encoding="utf-8-sig")
+                print(f"[LOAD] 대수선 이력 CSV 로드: {len(self.df_renovation):,}건")
+            except FileNotFoundError:
+                self.df_renovation = None
+                print("[LOAD] 대수선 이력 CSV 없음 (대수선이력 점수는 0으로 처리됩니다)")
+        else:
+            self.df_renovation = None
         return self
     
     def preprocess_transactions(self):
@@ -192,6 +206,27 @@ class DemandForecastingPipeline:
         print(f"[PREPROCESS] 전월세 정제 완료: {len(df):,}건")
         return self
 
+    def preprocess_renovation(self):
+        if self.df_renovation is None or self.df_renovation.empty:
+            self.df_renovation = None
+            print("[PREPROCESS] 대수선 이력 데이터 없음 (대수선이력건수는 0으로 처리됩니다)")
+            return self
+
+        from src.collector import SIGUNGU_CODE_TO_FULL_NAME
+
+        df = self.df_renovation.copy()
+        df["시군구"] = df["수집_시군구코드"].map(
+            lambda c: SIGUNGU_CODE_TO_FULL_NAME.get(str(c), str(c))
+        )
+        df["시도"]      = df["시군구"].apply(extract_sido)
+        df["시군구_코드"] = df["시군구"].apply(
+            lambda x: str(x).strip().split()[1] if len(str(x).strip().split()) >= 2 else x
+        )
+
+        self.df_renovation = df
+        print(f"[PREPROCESS] 대수선 이력 정제 완료: {len(df):,}건")
+        return self
+
     def preprocess_supply(self):
         df = self.df_supply.copy()
         df["세대수"] = pd.to_numeric(df["세대수"], errors="coerce").fillna(0)
@@ -252,6 +287,17 @@ class DemandForecastingPipeline:
         else:
             df["전월세거래건수"] = 0
 
+        if self.df_renovation is not None and not self.df_renovation.empty:
+            agg_renovation = (
+                self.df_renovation.groupby(["시도", "시군구_코드"])
+                .size()
+                .reset_index(name="대수선이력건수")
+            )
+            df = pd.merge(df, agg_renovation, on=["시도", "시군구_코드"], how="left")
+            df["대수선이력건수"] = df["대수선이력건수"].fillna(0)
+        else:
+            df["대수선이력건수"] = 0
+
         self.df_processed = df
         print(f"[MERGE] 집계 완료: {len(df):,}개 시군구")
         return self
@@ -267,6 +313,7 @@ class DemandForecastingPipeline:
         df["s_면적"]         = min_max_scale(df["평균면적"])
         df["s_신규입주"]     = min_max_scale(df["신규입주"])
         df["s_전월세거래건수"] = min_max_scale(df["전월세거래건수"])
+        df["s_대수선이력"]    = min_max_scale(df["대수선이력건수"])
 
         df["인테리어_수요점수"] = (
             df["s_거래건수"]     * w["거래건수"] +
@@ -274,7 +321,8 @@ class DemandForecastingPipeline:
             df["s_노후도"]       * w["노후도"]   +
             df["s_면적"]         * w["면적"]     +
             df["s_신규입주"]     * w["신규입주"] +
-            df["s_전월세거래건수"] * w["전월세거래건수"]
+            df["s_전월세거래건수"] * w["전월세거래건수"] +
+            df["s_대수선이력"]    * w["대수선이력"]
         ).round(2)
 
         self.df_processed = df.sort_values("인테리어_수요점수", ascending=False)
@@ -287,14 +335,14 @@ class DemandForecastingPipeline:
         result_cols = [
             "시도", "시군구_코드",
             "거래건수", "평균거래금액", "평균노후도", "평균면적",
-            "신규입주", "입주단지", "전월세거래건수",
+            "신규입주", "입주단지", "전월세거래건수", "대수선이력건수",
             "인테리어_수요점수",
         ]
         df_result = self.df_processed[result_cols].copy()
         df_result.columns = [
             "시도", "시군구",
             "거래건수", "평균거래금액_만원", "평균노후도_년", "평균면적_m2",
-            "신규입주_세대수", "입주단지수", "전월세거래건수",
+            "신규입주_세대수", "입주단지수", "전월세거래건수", "대수선이력건수",
             "인테리어_수요점수",
         ]
 
@@ -323,6 +371,7 @@ class DemandForecastingPipeline:
             .load_data(df_transactions=df_transactions, df_rent=df_rent)
             .preprocess_transactions()
             .preprocess_rent()
+            .preprocess_renovation()
             .preprocess_supply()
             .aggregate_and_merge()
             .calculate_demand_score()

@@ -344,19 +344,19 @@ class ApartmentDataCollector:
         params = {
             "serviceKey": self.api_key,
             "sigunguCd": sigungu_code,
-            "bjdongCd": bdong_code,
+            "bjdongCd": bdong_code[-5:],
             "numOfRows": 1000,
             "pageNo": 1,
             "_type": "json",
         }
 
         try:
-            res = requests.get(url, params=params, timeout=10)
+            res = requests.get(url, params=params, timeout=5)
             res_json = res.json()
 
             header = res_json.get("response", {}).get("header", {})
             if header.get("resultCode") != "00":
-                print(f"  [API ERROR] {header.get('resultCode')}: {header.get('resultMsg')}")
+                print(f"  [API ERROR] {header.get('resultCode')}: {header.get('resultMsg')}", flush=True)
                 return pd.DataFrame()
 
             items = res_json["response"]["body"]["items"]
@@ -391,29 +391,32 @@ class ApartmentDataCollector:
         total = sum(len(v) for v in legal_dong_codes.values())
         done = 0
 
-        print(f"[COLLECT][대수선] {len(legal_dong_codes)}개 시군구, 총 {total}개 법정동 조회 시작")
+        print(f"[COLLECT][대수선] {len(legal_dong_codes)}개 시군구, 총 {total}개 법정동 조회 시작", flush=True)
 
         for sigungu_code, bdong_list in legal_dong_codes.items():
             for bdong_code in bdong_list:
                 done += 1
-                print(f"  [{done:>4}/{total}] {sigungu_code}/{bdong_code} ...", end=" ")
                 df_chunk = self.fetch_renovation(sigungu_code, bdong_code)
                 if not df_chunk.empty:
                     collected.append(df_chunk)
-                    print(f"{len(df_chunk):,}건 OK")
-                else:
-                    print("0건")
+                    print(f"  [{done:>4}/{total}] {sigungu_code}/{bdong_code} -> {len(df_chunk):,}건", flush=True)
+                elif done % 50 == 0:
+                    print(f"  [{done:>4}/{total}] {sigungu_code}/{bdong_code} -> 0건", flush=True)
+
+                if save_path and done % 200 == 0 and collected:
+                    pd.concat(collected, ignore_index=True).to_csv(save_path, index=False, encoding="utf-8-sig")
+                    print(f"  [CHECKPOINT] {done}/{total} 저장 완료", flush=True)
 
         if not collected:
             print("[WARNING] 수집된 대수선 데이터가 없습니다.")
             return pd.DataFrame()
 
         df_all = pd.concat(collected, ignore_index=True)
-        print(f"\n[COLLECT][대수선] 완료 - 총 {len(df_all):,}건 수집")
+        print(f"\n[COLLECT][대수선] 완료 - 총 {len(df_all):,}건 수집", flush=True)
 
         if save_path:
             df_all.to_csv(save_path, index=False, encoding="utf-8-sig")
-            print(f"[SAVE]    {save_path} 저장 완료")
+            print(f"[SAVE]    {save_path} 저장 완료", flush=True)
         return df_all
 
     def normalize_renovation_columns(self, df: pd.DataFrame) -> pd.DataFrame:
@@ -422,12 +425,12 @@ class ApartmentDataCollector:
             return df
 
         rename_map = {
-            "대수선구분코드명":   "대수선구분",
-            "대수선변경구분코드명": "대수선변경구분",
-            "대지위치":         "대지위치",
-            "관리허가대장PK":    "건물PK",
-            "건물명":          "건물명",
-            "생성일자":         "생성일자",
+            "platPlc":          "대지위치",
+            "imprprGbCdNm":     "대수선구분",
+            "imprprChangGbCdNm": "대수선변경구분",
+            "mgmPmsrgstPk":     "건물PK",
+            "bldNm":            "건물명",
+            "crtnDay":          "생성일자",
         }
         df = df.rename(columns=rename_map)
 
