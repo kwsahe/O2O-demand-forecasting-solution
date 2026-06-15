@@ -96,6 +96,60 @@ GYEONGGI_SIGUNGU_CODES = {
     "양평군":       "41830",
 }
 
+BUSAN_SIGUNGU_CODES = {
+    "중구":   "26110",
+    "서구":   "26140",
+    "동구":   "26170",
+    "영도구": "26200",
+    "부산진구": "26230",
+    "동래구": "26260",
+    "남구":   "26290",
+    "북구":   "26320",
+    "해운대구": "26350",
+    "사하구": "26380",
+    "금정구": "26410",
+    "강서구": "26440",
+    "연제구": "26470",
+    "수영구": "26500",
+    "사상구": "26530",
+    "기장군": "26710",
+}
+
+DAEGU_SIGUNGU_CODES = {
+    "중구":   "27110",
+    "동구":   "27140",
+    "서구":   "27170",
+    "남구":   "27200",
+    "북구":   "27230",
+    "수성구": "27260",
+    "달서구": "27290",
+    "달성군": "27710",
+}
+
+GWANGJU_SIGUNGU_CODES = {
+    "동구":   "29110",
+    "서구":   "29140",
+    "남구":   "29155",
+    "북구":   "29170",
+    "광산구": "29200",
+}
+
+DAEJEON_SIGUNGU_CODES = {
+    "동구":   "30110",
+    "중구":   "30140",
+    "서구":   "30170",
+    "유성구": "30200",
+    "대덕구": "30230",
+}
+
+ULSAN_SIGUNGU_CODES = {
+    "중구":   "31110",
+    "남구":   "31140",
+    "동구":   "31170",
+    "북구":   "31200",
+    "울주군": "31710",
+}
+
 # 시군구 코드 → "시도 시군구" 전체 명칭 매핑 (수집/정규화에 사용)
 SIGUNGU_CODE_TO_FULL_NAME = {}
 for _name, _code in SEOUL_SIGUNGU_CODES.items():
@@ -104,6 +158,39 @@ for _name, _code in INCHEON_SIGUNGU_CODES.items():
     SIGUNGU_CODE_TO_FULL_NAME[_code] = f"인천광역시 {_name}"
 for _name, _code in GYEONGGI_SIGUNGU_CODES.items():
     SIGUNGU_CODE_TO_FULL_NAME[_code] = f"경기도 {_name}"
+for _name, _code in BUSAN_SIGUNGU_CODES.items():
+    SIGUNGU_CODE_TO_FULL_NAME[_code] = f"부산광역시 {_name}"
+for _name, _code in DAEGU_SIGUNGU_CODES.items():
+    SIGUNGU_CODE_TO_FULL_NAME[_code] = f"대구광역시 {_name}"
+for _name, _code in GWANGJU_SIGUNGU_CODES.items():
+    SIGUNGU_CODE_TO_FULL_NAME[_code] = f"광주광역시 {_name}"
+for _name, _code in DAEJEON_SIGUNGU_CODES.items():
+    SIGUNGU_CODE_TO_FULL_NAME[_code] = f"대전광역시 {_name}"
+for _name, _code in ULSAN_SIGUNGU_CODES.items():
+    SIGUNGU_CODE_TO_FULL_NAME[_code] = f"울산광역시 {_name}"
+
+# 전체 시군구 "전체명칭"(공백제거) → 시군구코드 역매핑 (인테리어업체 데이터 등 명칭 기반 매칭용)
+FULL_NAME_TO_SIGUNGU_CODE = {
+    full.replace(" ", ""): code for code, full in SIGUNGU_CODE_TO_FULL_NAME.items()
+}
+
+# 인테리어업체 데이터 수집 대상 시도명 (수도권 + 5대 광역시)
+INTERIOR_TARGET_SIDO = [
+    "서울특별시", "인천광역시", "경기도",
+    "부산광역시", "대구광역시", "광주광역시", "대전광역시", "울산광역시",
+]
+
+# 5대 광역시(인천 제외) 시군구 코드 통합
+METRO5_SIGUNGU_CODES = {}
+for _d, _prefix in [
+    (BUSAN_SIGUNGU_CODES, "부산_"),
+    (DAEGU_SIGUNGU_CODES, "대구_"),
+    (GWANGJU_SIGUNGU_CODES, "광주_"),
+    (DAEJEON_SIGUNGU_CODES, "대전_"),
+    (ULSAN_SIGUNGU_CODES, "울산_"),
+]:
+    for _name, _code in _d.items():
+        METRO5_SIGUNGU_CODES[f"{_prefix}{_name}"] = _code
 
 def generate_year_months(start_ym: str, end_ym: str) -> list:
     start = datetime.strptime(start_ym, "%Y%m")
@@ -443,6 +530,114 @@ class ApartmentDataCollector:
             "건물PK", "건물명", "생성일자",
             "수집_시군구코드", "수집_법정동코드"]
         return df[[c for c in keep if c in df.columns]]
+
+    def fetch_interior_companies(self, ctpv_nm: str, page_no: int = 1, num_of_rows: int = 1000):
+        """전국인테리어업체표준데이터 - 시도별 인테리어 업체 현황 조회
+
+        반환: (DataFrame, totalCount)
+        """
+        import requests
+
+        url = "https://api.data.go.kr/openapi/tn_pubr_public_interior_api"
+        params = {
+            "serviceKey": self.api_key,
+            "pageNo": page_no,
+            "numOfRows": num_of_rows,
+            "type": "json",
+            "CTPV_NM": ctpv_nm,
+        }
+
+        try:
+            res = requests.get(url, params=params, timeout=10)
+            res_json = res.json()
+
+            header = res_json.get("response", {}).get("header", {})
+            if header.get("resultCode") not in ("00", "0", 0):
+                print(f"  [API ERROR] {header.get('resultCode')}: {header.get('resultMsg')}", flush=True)
+                return pd.DataFrame(), 0
+
+            body = res_json.get("response", {}).get("body", {})
+            items = body.get("items", [])
+            if isinstance(items, dict):
+                items = items.get("item", [])
+            if not items:
+                return pd.DataFrame(), int(body.get("totalCount", 0))
+
+            df = pd.DataFrame(items)
+            total_count = int(body.get("totalCount", len(df)))
+            time.sleep(self.request_interval)
+            return df, total_count
+
+        except Exception as e:
+            print(f"  [ERROR] {ctpv_nm} 인테리어업체 수집 실패: {e}")
+            return pd.DataFrame(), 0
+
+    def fetch_interior_companies_all(self, ctpv_list=None, save_path: str = None) -> pd.DataFrame:
+        """대상 시도 목록 전체에 대해 인테리어업체 현황을 페이지네이션으로 전부 수집"""
+        if ctpv_list is None:
+            ctpv_list = INTERIOR_TARGET_SIDO
+
+        collected = []
+        for ctpv in ctpv_list:
+            page = 1
+            while True:
+                df_chunk, total = self.fetch_interior_companies(ctpv, page_no=page, num_of_rows=1000)
+                if df_chunk.empty:
+                    break
+                collected.append(df_chunk)
+                print(f"  [{ctpv}] page {page} -> {len(df_chunk):,}건 (전체 {total:,}건)", flush=True)
+                if page * 1000 >= total:
+                    break
+                page += 1
+
+        if not collected:
+            print("[WARNING] 수집된 인테리어업체 데이터가 없습니다.")
+            return pd.DataFrame()
+
+        df_all = pd.concat(collected, ignore_index=True)
+        print(f"\n[COLLECT][인테리어업체] 완료 - 총 {len(df_all):,}건 수집")
+
+        if save_path:
+            df_all.to_csv(save_path, index=False, encoding="utf-8-sig")
+            print(f"[SAVE]    {save_path} 저장 완료")
+        return df_all
+
+    def normalize_interior_company_columns(self, df: pd.DataFrame) -> pd.DataFrame:
+        """인테리어업체 API 응답 컬럼 → 시군구 매칭용 컬럼 정리"""
+        if df.empty:
+            return df
+
+        rename_map = {
+            "bzentyNm":    "업체명",
+            "ctpvNm":      "시도명",
+            "sggNm":       "시군구명",
+            "lctnRoadNm":  "도로명주소",
+            "telno":       "전화번호",
+            "regNo":       "등록번호",
+            "rprsvNm":     "대표자명",
+            "tnoemp":      "총직원수",
+            "BZENTY_NM":   "업체명",
+            "CTPV_NM":     "시도명",
+            "SGG_NM":      "시군구명",
+            "LCTN_ROAD_NM": "도로명주소",
+            "TELNO":       "전화번호",
+            "REG_NO":      "등록번호",
+            "RPRSV_NM":    "대표자명",
+            "TNOEMP":      "총직원수",
+        }
+        df = df.rename(columns=rename_map)
+
+        if "시도명" in df.columns and "시군구명" in df.columns:
+            df["시군구_코드"] = df.apply(
+                lambda r: FULL_NAME_TO_SIGUNGU_CODE.get(
+                    f"{str(r['시도명']).strip()}{str(r['시군구명']).strip()}".replace(" ", "")
+                ),
+                axis=1,
+            )
+
+        keep = ["업체명", "시도명", "시군구명", "도로명주소", "총직원수", "시군구_코드"]
+        return df[[c for c in keep if c in df.columns]]
+
 
 if __name__ == "__main__":
     import sys

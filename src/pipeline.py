@@ -57,6 +57,7 @@ class DemandForecastingPipeline:
         supply_path: str = None,
         rent_path: str = None,
         renovation_path: str = "data/raw_renovation_collected.csv",
+        interior_company_path: str = "data/raw_interior_companies.csv",
         reference_year: int = REFERENCE_YEAR,
         supply_year_range: tuple = ("2025", "2026"),
         target_segment: str = "Old_Apartment",
@@ -66,6 +67,7 @@ class DemandForecastingPipeline:
         self.supply_path = supply_path
         self.rent_path = rent_path
         self.renovation_path = renovation_path
+        self.interior_company_path = interior_company_path
         self.reference_year = reference_year
         self.supply_year_range = supply_year_range
         self.target_segment = target_segment
@@ -75,6 +77,7 @@ class DemandForecastingPipeline:
         self.df_supply = None
         self.df_rent = None
         self.df_renovation = None
+        self.df_interior_company = None
         self.df_processed = None
 
     def load_data(self, df_transactions = None, df_rent = None):
@@ -112,6 +115,16 @@ class DemandForecastingPipeline:
                 print("[LOAD] 대수선 이력 CSV 없음 (대수선이력 점수는 0으로 처리됩니다)")
         else:
             self.df_renovation = None
+
+        if self.interior_company_path:
+            try:
+                self.df_interior_company = pd.read_csv(self.interior_company_path, encoding="utf-8-sig")
+                print(f"[LOAD] 인테리어업체 CSV 로드: {len(self.df_interior_company):,}건")
+            except FileNotFoundError:
+                self.df_interior_company = None
+                print("[LOAD] 인테리어업체 CSV 없음 (인테리어업체수는 0으로 처리됩니다)")
+        else:
+            self.df_interior_company = None
         return self
     
     def preprocess_transactions(self):
@@ -227,6 +240,26 @@ class DemandForecastingPipeline:
         print(f"[PREPROCESS] 대수선 이력 정제 완료: {len(df):,}건")
         return self
 
+    def preprocess_interior_company(self):
+        if self.df_interior_company is None or self.df_interior_company.empty:
+            self.df_interior_company = None
+            print("[PREPROCESS] 인테리어업체 데이터 없음 (인테리어업체수는 0으로 처리됩니다)")
+            return self
+
+        df = self.df_interior_company.copy()
+        df = df.dropna(subset=["시군구_코드"]).copy()
+
+        sido_map = {
+            "서울특별시": "서울", "인천광역시": "인천", "경기도": "경기",
+            "부산광역시": "부산", "대구광역시": "대구", "광주광역시": "광주",
+            "대전광역시": "대전", "울산광역시": "울산",
+        }
+        df["시도"] = df["시도명"].map(lambda x: sido_map.get(str(x).strip(), str(x).strip()))
+
+        self.df_interior_company = df
+        print(f"[PREPROCESS] 인테리어업체 정제 완료: {len(df):,}건 (시군구 매칭됨)")
+        return self
+
     def preprocess_supply(self):
         df = self.df_supply.copy()
         df["세대수"] = pd.to_numeric(df["세대수"], errors="coerce").fillna(0)
@@ -298,6 +331,17 @@ class DemandForecastingPipeline:
         else:
             df["대수선이력건수"] = 0
 
+        if self.df_interior_company is not None and not self.df_interior_company.empty:
+            agg_interior = (
+                self.df_interior_company.groupby(["시도", "시군구_코드"])
+                .size()
+                .reset_index(name="인테리어업체수")
+            )
+            df = pd.merge(df, agg_interior, on=["시도", "시군구_코드"], how="left")
+            df["인테리어업체수"] = df["인테리어업체수"].fillna(0)
+        else:
+            df["인테리어업체수"] = 0
+
         self.df_processed = df
         print(f"[MERGE] 집계 완료: {len(df):,}개 시군구")
         return self
@@ -335,14 +379,14 @@ class DemandForecastingPipeline:
         result_cols = [
             "시도", "시군구_코드",
             "거래건수", "평균거래금액", "평균노후도", "평균면적",
-            "신규입주", "입주단지", "전월세거래건수", "대수선이력건수",
+            "신규입주", "입주단지", "전월세거래건수", "대수선이력건수", "인테리어업체수",
             "인테리어_수요점수",
         ]
         df_result = self.df_processed[result_cols].copy()
         df_result.columns = [
             "시도", "시군구",
             "거래건수", "평균거래금액_만원", "평균노후도_년", "평균면적_m2",
-            "신규입주_세대수", "입주단지수", "전월세거래건수", "대수선이력건수",
+            "신규입주_세대수", "입주단지수", "전월세거래건수", "대수선이력건수", "인테리어업체수",
             "인테리어_수요점수",
         ]
 
@@ -372,6 +416,7 @@ class DemandForecastingPipeline:
             .preprocess_transactions()
             .preprocess_rent()
             .preprocess_renovation()
+            .preprocess_interior_company()
             .preprocess_supply()
             .aggregate_and_merge()
             .calculate_demand_score()

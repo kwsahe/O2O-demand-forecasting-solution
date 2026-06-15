@@ -11,7 +11,13 @@ load_dotenv()
 
 sys.path.append(os.path.dirname(__file__))
 
-from src.collector import ApartmentDataCollector, SEOUL_SIGUNGU_CODES, INCHEON_SIGUNGU_CODES, GYEONGGI_SIGUNGU_CODES
+from src.collector import (
+    ApartmentDataCollector,
+    SEOUL_SIGUNGU_CODES,
+    INCHEON_SIGUNGU_CODES,
+    GYEONGGI_SIGUNGU_CODES,
+    METRO5_SIGUNGU_CODES,
+)
 from src.pipeline import DemandForecastingPipeline
 
 app = Flask(__name__)
@@ -20,6 +26,7 @@ API_KEY = os.getenv("API_KEY", "")
 APT_BASIC_INFO_API_KEY = os.getenv("APT_BASIC_INFO_API_KEY", "")
 OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://localhost:11434")
 CHAT_MODEL = os.getenv("CHAT_MODEL", "qwen2.5:3b")
+NAVER_MAP_CLIENT_ID = os.getenv("NAVER_MAP_CLIENT_ID", "")
 
 CHAT_DB_PATH = os.path.join(os.path.dirname(__file__), "data", "chat_history.db")
 
@@ -32,18 +39,24 @@ def init_chat_db():
             created_at TEXT NOT NULL,
             user_message TEXT NOT NULL,
             bot_answer TEXT,
-            status TEXT NOT NULL
+            status TEXT NOT NULL,
+            chat_type TEXT NOT NULL DEFAULT 'demand'
         )
     """)
+    # 기존 테이블에 chat_type 컬럼이 없으면 추가 (구버전 DB 호환)
+    try:
+        conn.execute("ALTER TABLE chat_logs ADD COLUMN chat_type TEXT NOT NULL DEFAULT 'demand'")
+    except sqlite3.OperationalError:
+        pass
     conn.commit()
     conn.close()
 
 
-def save_chat_log(user_message, bot_answer, status):
+def save_chat_log(user_message, bot_answer, status, chat_type="demand"):
     conn = sqlite3.connect(CHAT_DB_PATH)
     conn.execute(
-        "INSERT INTO chat_logs (created_at, user_message, bot_answer, status) VALUES (?, ?, ?, ?)",
-        (datetime.now().isoformat(timespec="seconds"), user_message, bot_answer, status),
+        "INSERT INTO chat_logs (created_at, user_message, bot_answer, status, chat_type) VALUES (?, ?, ?, ?, ?)",
+        (datetime.now().isoformat(timespec="seconds"), user_message, bot_answer, status, chat_type),
     )
     conn.commit()
     conn.close()
@@ -55,12 +68,17 @@ print("Flask 앱 초기화 완료")
 
 @app.route("/")
 def index():
-    return render_template("index.html")
+    return render_template("index.html", naver_map_client_id=NAVER_MAP_CLIENT_ID)
 
 
 @app.route("/analytics")
 def analytics():
     return render_template("analytics.html")
+
+
+@app.route("/guide")
+def guide():
+    return render_template("guide.html")
 
 
 @app.route("/health")
@@ -88,6 +106,28 @@ def get_demand():
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
     
+@app.route("/api/map-data", methods=["GET"])
+def get_map_data():
+    try:
+        df = pd.read_csv("data/인테리어_수요점수_결과.csv", encoding="utf-8-sig")
+        coords = pd.read_csv("data/sigungu_coordinates.csv", encoding="utf-8-sig")
+
+        merged = df.merge(coords, on=["시도", "시군구"], how="inner")
+
+        sido = request.args.get("sido", None)
+        if sido:
+            merged = merged[merged["시도"] == sido]
+
+        return jsonify({
+            "status": "ok",
+            "naver_map_client_id": NAVER_MAP_CLIENT_ID,
+            "count": len(merged),
+            "data": merged.to_dict(orient="records"),
+        })
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
 @app.route("/api/sido-summary", methods=["GET"])
 def get_sido_summary():
     try:
@@ -318,12 +358,12 @@ def build_ranking_summary(df: pd.DataFrame, top_n: int = 10) -> str:
     return "\n".join(lines)
 
 
-def get_recent_chat_history(limit: int = 3):
+def get_recent_chat_history(limit: int = 3, chat_type: str = "demand"):
     """최근 대화 기록을 가져와 멀티턴 대화(이어지는 질문)를 지원한다."""
     conn = sqlite3.connect(CHAT_DB_PATH)
     rows = conn.execute(
-        "SELECT user_message, bot_answer FROM chat_logs WHERE status = 'ok' ORDER BY id DESC LIMIT ?",
-        (limit,),
+        "SELECT user_message, bot_answer FROM chat_logs WHERE status = 'ok' AND chat_type = ? ORDER BY id DESC LIMIT ?",
+        (chat_type, limit),
     ).fetchall()
     conn.close()
     return list(reversed(rows))
@@ -439,7 +479,9 @@ def chat():
                 "stream": False,
                 # 기본 num_ctx(2048)는 시군구별 전체 표를 담은 시스템 프롬프트보다 작아서
                 # 앞부분 데이터가 잘려나가 모델이 잘못된 값을 답하는 원인이 됨 -> 충분히 키움
-                "options": {"num_ctx": 8192},
+                # num_predict을 지정하지 않으면(-1) 입력+출력 합이 num_ctx를 넘는 순간
+                # 답변이 중간에 끊기므로, 입력에 쓰고 남는 만큼을 출력용으로 명시적으로 확보
+                "options": {"num_ctx": 16384, "num_predict": 1024},
             },
             timeout=120,
         )
@@ -456,9 +498,85 @@ def chat():
         save_chat_log(message, None, f"error: {e}")
         return jsonify({"status": "error", "message": str(e)}), 500
 
+
+@app.route("/api/guide-chat", methods=["POST"])
+def guide_chat():
+    message = ""
+    try:
+        body = request.get_json() or {}
+        message = body.get("message", "").strip()
+
+        if not message:
+            return jsonify({"status": "error", "message": "메시지를 입력하세요."}), 400
+
+        system_prompt = (
+            "당신은 '첫 집 구매 가이드' 챗봇입니다. 사회초년생이나 생애 첫 주택 구매자가 막연하고 두려운 "
+            "내 집 마련 과정을 쉽고 친절하게 이해할 수 있도록 돕는 것이 목표입니다. "
+            "항상 따뜻하고 다정한 말투로, 어려운 용어는 풀어서 설명하고, 필요하면 구체적인 절차를 "
+            "번호를 매겨 단계별로 안내하세요. 적절히 이모지를 곁들여도 좋습니다.\n\n"
+            "[주택 매수 절차 — 표준 흐름]\n"
+            "1단계. 예산·자금 계획 — 보유 자금, 신용대출, 주택담보대출(LTV/DTI/DSR 한도) 등을 따져 "
+            "구매 가능한 가격 범위를 정한다. 생애최초 구매자는 LTV 우대, 디딤돌대출/보금자리론 등 "
+            "정책금융 상품을 확인하면 유리하다.\n"
+            "2단계. 매물 탐색 — 직방/네이버부동산/호갱노노 등으로 시세 파악, 관심 지역의 실거래가 확인. "
+            "임장(현장 방문)을 통해 채광, 소음, 주변 인프라, 건물 노후도를 직접 확인한다.\n"
+            "3단계. 가계약/계약금 — 매물이 정해지면 보통 매매가의 5~10%를 계약금으로 지급하고 가계약서를 "
+            "작성한다. 계약 전 등기부등본(을구 근저당 확인), 건축물대장, 토지이용계획확인서를 반드시 확인한다.\n"
+            "4단계. 본계약(매매계약서 작성) — 공인중개사를 통해 매도인과 매매계약서를 작성하고 계약금을 "
+            "최종 지급한다. 특약사항(잔금일, 인도일, 하자 처리 등)을 꼼꼼히 확인한다.\n"
+            "5단계. 중도금 — 계약 금액이 클 경우 중도금을 지급하며, 이 시점에 대출 상담/한도 조회를 "
+            "구체화해 잔금일에 맞춰 대출 실행을 준비한다.\n"
+            "6단계. 잔금 지급 및 등기 이전 — 잔금일에 나머지 금액을 지급하고 동시에 소유권이전등기를 "
+            "신청한다(법무사 대행 일반적). 이때 취득세(주택 가격에 따라 1~3%+지방교육세 등)를 납부해야 한다.\n"
+            "7단계. 입주 및 전입신고 — 잔금 지급 후 입주하며, 14일 이내 전입신고를 하면 전세권/대항력 "
+            "관련 권리가 보호된다(전세/임차인 입장에서 특히 중요).\n"
+            "8단계. 사후 관리 — 재산세(매년 6/1 기준 소유자에게 부과), 장기수선충당금(아파트의 경우 "
+            "관리비에 포함), 화재보험 가입 등을 챙긴다.\n\n"
+            "[자주 헷갈리는 용어]\n"
+            "- LTV(주택담보대출비율): 집값 대비 대출 가능 비율\n"
+            "- DSR(총부채원리금상환비율): 연소득 대비 모든 대출의 연간 원리금 상환액 비율, 대출 한도에 영향\n"
+            "- 등기부등본: 부동산의 소유권/권리관계(근저당, 압류 등)를 기록한 공식 문서, 계약 전 필수 확인\n"
+            "- 중개수수료: 매매가에 따라 법정 한도 내에서 중개사와 협의 (보통 0.4~0.9% 수준)\n"
+            "- 취득세: 매수 시 납부하는 지방세, 주택 가격·규모·보유 주택 수에 따라 1~3% 이상 차등\n\n"
+            "사용자가 자신의 상황(예산, 지역, 생애최초 여부 등)을 알려주면 그에 맞춰 구체적으로 안내하고, "
+            "법률/세무/대출의 최종 판단은 법무사·세무사·은행 등 전문가 상담이 필요하다는 점도 안내하세요. "
+            "데이터에 없는 최신 법령/금리/세율은 변동될 수 있으니 반드시 최신 정보를 직접 확인하라고 안내하세요. "
+            "반드시 한국어로만 답변하세요. 다른 언어(영어, 중국어, 일본어 등)는 절대 사용하지 마세요."
+        )
+
+        messages = [{"role": "system", "content": system_prompt}]
+        for past_user, past_answer in get_recent_chat_history(chat_type="guide"):
+            messages.append({"role": "user", "content": past_user})
+            messages.append({"role": "assistant", "content": past_answer})
+        messages.append({"role": "user", "content": message})
+
+        res = requests.post(
+            f"{OLLAMA_HOST}/api/chat",
+            json={
+                "model": CHAT_MODEL,
+                "messages": messages,
+                "stream": False,
+                "options": {"num_ctx": 16384, "num_predict": 1024},
+            },
+            timeout=120,
+        )
+        res.raise_for_status()
+        answer = res.json()["message"]["content"]
+
+        save_chat_log(message, answer, "ok", chat_type="guide")
+        return jsonify({"status": "ok", "answer": answer})
+
+    except requests.exceptions.ConnectionError:
+        save_chat_log(message, None, "error: ollama_connection", chat_type="guide")
+        return jsonify({"status": "error", "message": f"Ollama 서버({OLLAMA_HOST})에 연결할 수 없습니다."}), 500
+    except Exception as e:
+        save_chat_log(message, None, f"error: {e}", chat_type="guide")
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
 if __name__ == "__main__":
     app.run(
         host="0.0.0.0",  # 외부 접속 허용 (배포 시 필요)
-        port=5000,
+        port=8300,
         debug=True,      # 코드 변경 시 자동 재시작
     )

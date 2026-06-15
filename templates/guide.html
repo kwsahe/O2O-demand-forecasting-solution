@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>오늘의집 | 첫 집 구매 가이드</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg:       #080e1a;
+            --surface:  #0d1626;
+            --surface2: #111e33;
+            --surface3: #162240;
+            --border:   #1e3050;
+            --border2:  #253d66;
+            --accent:   #f97316;
+            --accent2:  #fbbf24;
+            --blue:     #38bdf8;
+            --green:    #34d399;
+            --purple:   #a78bfa;
+            --red:      #f87171;
+            --teal:     #2dd4bf;
+            --text:     #e2e8f0;
+            --text2:    #94a3b8;
+            --muted:    #64748b;
+            --mono:     'DM Mono', monospace;
+            --body:     'Noto Sans KR', sans-serif;
+        }
+
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        html { scroll-behavior: smooth; }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: var(--body);
+            font-size: 14px;
+            min-height: 100vh;
+            line-height: 1.5;
+        }
+
+        body::before {
+            content: '';
+            position: fixed; inset: 0;
+            background-image:
+                linear-gradient(var(--border) 1px, transparent 1px),
+                linear-gradient(90deg, var(--border) 1px, transparent 1px);
+            background-size: 40px 40px;
+            opacity: 0.18;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* ── 카드 공통 */
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            transition: border-color .2s, box-shadow .2s;
+        }
+        .card:hover {
+            border-color: var(--border2);
+            box-shadow: 0 0 0 1px var(--border2), 0 8px 32px rgba(0,0,0,.4);
+        }
+
+        /* ── 내비게이션 */
+        .nav-link {
+            font-family: var(--mono);
+            font-size: 11px;
+            letter-spacing: .08em;
+            padding: 6px 14px;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            background: var(--surface);
+            color: var(--text2);
+            text-decoration: none;
+            transition: all .15s;
+            white-space: nowrap;
+        }
+        .nav-link:hover { border-color: var(--border2); color: var(--text); }
+        .nav-link.active {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: white;
+        }
+
+        /* ── 섹션 레이블 */
+        .section-label {
+            font-family: var(--mono);
+            font-size: 10px;
+            letter-spacing: .14em;
+            color: var(--muted);
+            text-transform: uppercase;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .section-label::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: var(--border);
+        }
+
+        /* ── 애니메이션 */
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: .4; transform: scale(.7); }
+        }
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(14px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+        .anim-0  { animation: fadeUp .45s ease both 0s; }
+        .anim-1  { animation: fadeUp .45s ease both .05s; }
+        .anim-2  { animation: fadeUp .45s ease both .10s; }
+        .anim-3  { animation: fadeUp .45s ease both .15s; }
+        .anim-4  { animation: fadeUp .45s ease both .20s; }
+        .anim-5  { animation: fadeUp .45s ease both .25s; }
+        .anim-6  { animation: fadeUp .45s ease both .30s; }
+        .anim-7  { animation: fadeUp .45s ease both .35s; }
+        .anim-8  { animation: fadeUp .45s ease both .40s; }
+
+        /* ── 단계 카드 */
+        .step-card { padding: 22px; display: flex; flex-direction: column; gap: 10px; }
+        .step-num {
+            width: 30px; height: 30px;
+            background: var(--accent);
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-family: var(--mono); font-size: 13px; font-weight: 500;
+            flex-shrink: 0;
+        }
+        .step-title { font-size: 14px; font-weight: 600; }
+        .step-desc { font-size: 12.5px; color: var(--text2); line-height: 1.8; }
+
+        /* ── 용어 카드 */
+        .term-item { padding: 14px 0; border-bottom: 1px solid rgba(30,48,80,.5); }
+        .term-item:last-child { border-bottom: none; }
+        .term-name { font-size: 13px; font-weight: 600; color: var(--accent2); margin-bottom: 4px; }
+        .term-desc { font-size: 12.5px; color: var(--text2); line-height: 1.7; }
+
+        /* ── 스크롤바 */
+        ::-webkit-scrollbar { width: 5px; height: 5px; }
+        ::-webkit-scrollbar-track { background: var(--surface); }
+        ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+
+        /* ── 챗봇 */
+        .chat-panel {
+            display: flex;
+            flex-direction: column;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            box-shadow: 0 8px 24px rgba(0,0,0,.35);
+            overflow: hidden;
+            height: 640px;
+        }
+        .chat-header {
+            padding: 18px 22px;
+            border-bottom: 1px solid var(--border);
+            font-size: 15px;
+            font-weight: 500;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .chat-header span.sub {
+            font-family: var(--mono);
+            font-size: 10px;
+            color: var(--muted);
+            font-weight: 400;
+            margin-left: 8px;
+        }
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 22px 26px;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            font-size: 14px;
+            line-height: 1.7;
+        }
+        .chat-msg {
+            max-width: 80%;
+            padding: 12px 16px;
+            border-radius: 12px;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+        .chat-msg.user {
+            align-self: flex-end;
+            background: var(--accent);
+            color: #fff;
+            border-bottom-right-radius: 2px;
+        }
+        .chat-msg.bot {
+            align-self: flex-start;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            color: var(--text);
+            border-bottom-left-radius: 2px;
+        }
+        .chat-msg.bot.loading { color: var(--muted); }
+        .chat-input-row {
+            display: flex;
+            gap: 10px;
+            padding: 16px 22px;
+            border-top: 1px solid var(--border);
+        }
+        .chat-input {
+            flex: 1;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 12px 16px;
+            color: var(--text);
+            font-family: var(--body);
+            font-size: 14px;
+            outline: none;
+        }
+        .chat-input:focus { border-color: var(--accent); }
+        .chat-send {
+            background: var(--accent);
+            border: none;
+            border-radius: 10px;
+            color: #fff;
+            font-size: 14px;
+            padding: 0 22px;
+            cursor: pointer;
+        }
+        .chat-send:disabled { opacity: .5; cursor: default; }
+
+        /* ── 퀵 질문 버튼 */
+        .quick-btn {
+            font-family: var(--body);
+            font-size: 11.5px;
+            padding: 6px 12px;
+            border-radius: 16px;
+            border: 1px solid var(--border);
+            background: var(--surface2);
+            color: var(--text2);
+            cursor: pointer;
+            transition: all .15s;
+            white-space: nowrap;
+        }
+        .quick-btn:hover { border-color: var(--accent); color: var(--text); }
+    </style>
+</head>
+<body>
+
+<!-- ══════════════════════════════ HEADER ══════════════════════════════ -->
+<header id="main-header" style="position:sticky;top:0;z-index:100;display:flex;align-items:center;justify-content:space-between;padding:14px 32px;border-bottom:1px solid var(--border);background:rgba(8,14,26,.92);backdrop-filter:blur(12px);">
+    <div style="display:flex;align-items:center;gap:14px;">
+        <div style="width:34px;height:34px;background:linear-gradient(135deg,var(--accent),var(--accent2));border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0;">🔑</div>
+        <div>
+            <div style="font-size:14px;font-weight:700;letter-spacing:.04em;">오늘의집 · 첫 집 구매 가이드</div>
+            <div style="font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;margin-top:1px;">O2O Demand Forecasting Pipeline · v1.0</div>
+        </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:20px;">
+        <!-- 내비게이션 -->
+        <nav style="display:flex;gap:6px;">
+            <a href="/" class="nav-link">대시보드</a>
+            <a href="/analytics" class="nav-link">통계·분석</a>
+            <a href="/guide" class="nav-link active">구매 가이드</a>
+        </nav>
+        <!-- 라이브 -->
+        <div style="display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:11px;color:var(--green);">
+            <div style="width:6px;height:6px;border-radius:50%;background:var(--green);animation:pulse 1.8s ease-in-out infinite;"></div>
+            LIVE
+        </div>
+        <div id="clock" style="font-family:var(--mono);font-size:11px;color:var(--muted);min-width:160px;text-align:right;">—</div>
+    </div>
+</header>
+
+<!-- ══════════════════════════════ MAIN ══════════════════════════════ -->
+<main style="position:relative;z-index:1;padding:28px 32px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px;">
+
+<!-- ── 소개 ── -->
+<div id="intro-card" class="card anim-0" style="grid-column:1/-1;padding:28px 30px;">
+    <div class="section-label">🔑 사회초년생을 위한 첫 집 구매 가이드</div>
+    <div style="background:var(--surface2);border-left:3px solid var(--accent);border-radius:0 10px 10px 0;padding:16px 20px;font-size:14px;line-height:1.8;color:var(--text);">
+        처음 집을 구매할 때는 <strong style="color:var(--accent);">예산 계획부터 등기 이전까지</strong> 낯선 절차와 용어가 많아 막막할 수 있어요.
+        이 페이지는 <strong>주택 매수의 전체 흐름을 8단계</strong>로 정리하고, <strong style="color:var(--accent2);">자주 헷갈리는 용어</strong>를 풀어서 설명합니다.
+        아래 <strong>AI 가이드 챗봇</strong>에 본인의 상황(예산, 지역, 생애최초 여부 등)을 입력하면 맞춤형 안내를 받을 수 있어요.
+    </div>
+</div>
+
+<!-- ── 매수 절차 8단계 ── -->
+<div style="grid-column:1/-1;" class="anim-1">
+    <div class="section-label">📋 주택 매수 절차 — 8단계</div>
+</div>
+
+<div class="card step-card anim-1" style="grid-column:span 1;">
+    <div style="display:flex;align-items:center;gap:10px;"><div class="step-num">1</div><div class="step-title">예산·자금 계획</div></div>
+    <div class="step-desc">보유 자금 + 신용대출 + 주택담보대출(<strong style="color:var(--accent2);">LTV/DTI/DSR</strong> 한도)을 따져 구매 가능한 가격 범위를 정해요. 생애최초 구매자는 <strong>LTV 우대, 디딤돌대출/보금자리론</strong> 등 정책금융 상품을 꼭 확인하세요.</div>
+</div>
+
+<div class="card step-card anim-1" style="grid-column:span 1;">
+    <div style="display:flex;align-items:center;gap:10px;"><div class="step-num">2</div><div class="step-title">매물 탐색 &amp; 임장</div></div>
+    <div class="step-desc">직방/네이버부동산/호갱노노 등으로 시세를 파악하고, 이 대시보드의 <strong style="color:var(--accent);">지역별 인테리어 수요 점수</strong>로 동네 분위기도 참고해보세요. <strong>임장(현장 방문)</strong>으로 채광·소음·인프라·노후도를 직접 확인하는 게 중요해요.</div>
+</div>
+
+<div class="card step-card anim-2" style="grid-column:span 1;">
+    <div style="display:flex;align-items:center;gap:10px;"><div class="step-num">3</div><div class="step-title">가계약 &amp; 계약금</div></div>
+    <div class="step-desc">보통 매매가의 <strong>5~10%를 계약금</strong>으로 지급하고 가계약서를 작성해요. 계약 전 <strong style="color:var(--accent2);">등기부등본(을구 근저당 확인)</strong>, 건축물대장, 토지이용계획확인서를 반드시 확인하세요.</div>
+</div>
+
+<div class="card step-card anim-2" style="grid-column:span 1;">
+    <div style="display:flex;align-items:center;gap:10px;"><div class="step-num">4</div><div class="step-title">본계약(매매계약서)</div></div>
+    <div class="step-desc">공인중개사를 통해 매도인과 <strong>매매계약서</strong>를 작성하고 계약금을 최종 지급해요. <strong style="color:var(--accent2);">특약사항</strong>(잔금일, 인도일, 하자 처리 등)을 꼼꼼히 확인하세요.</div>
+</div>
+
+<div class="card step-card anim-2" style="grid-column:span 1;">
+    <div style="display:flex;align-items:center;gap:10px;"><div class="step-num">5</div><div class="step-title">중도금</div></div>
+    <div class="step-desc">계약 금액이 클 경우 <strong>중도금</strong>을 지급하며, 이 시점에 <strong style="color:var(--accent2);">대출 상담/한도 조회</strong>를 구체화해 잔금일에 맞춰 대출 실행을 준비해요.</div>
+</div>
+
+<div class="card step-card anim-3" style="grid-column:span 1;">
+    <div style="display:flex;align-items:center;gap:10px;"><div class="step-num">6</div><div class="step-title">잔금 &amp; 등기 이전</div></div>
+    <div class="step-desc">잔금일에 나머지 금액을 지급하고 동시에 <strong style="color:var(--accent2);">소유권이전등기</strong>를 신청해요(법무사 대행). 이때 <strong style="color:var(--accent);">취득세(1~3%+지방교육세 등)</strong>를 납부해야 해요.</div>
+</div>
+
+<div class="card step-card anim-3" style="grid-column:span 1;">
+    <div style="display:flex;align-items:center;gap:10px;"><div class="step-num">7</div><div class="step-title">입주 &amp; 전입신고</div></div>
+    <div class="step-desc">잔금 지급 후 입주하며, <strong style="color:var(--accent);">14일 이내 전입신고</strong>를 하면 관련 권리가 보호돼요(임차인에게 특히 중요).</div>
+</div>
+
+<div class="card step-card anim-3" style="grid-column:span 1;">
+    <div style="display:flex;align-items:center;gap:10px;"><div class="step-num">8</div><div class="step-title">사후 관리</div></div>
+    <div class="step-desc"><strong style="color:var(--accent2);">재산세</strong>(매년 6/1 기준 소유자 부과), 아파트 <strong>장기수선충당금</strong>, <strong>화재보험</strong> 가입 등을 챙겨야 해요.</div>
+</div>
+
+<!-- ── 자주 헷갈리는 용어 ── -->
+<div id="terms-card" class="card anim-4" style="grid-column:1/-1;padding:24px 28px;">
+    <div class="section-label">📖 자주 헷갈리는 용어</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 32px;">
+        <div class="term-item">
+            <div class="term-name">LTV (주택담보대출비율)</div>
+            <div class="term-desc">집값 대비 <strong>대출 가능 비율</strong>. 예) LTV 70%면 집값의 70%까지 대출 가능.</div>
+        </div>
+        <div class="term-item">
+            <div class="term-name">DSR (총부채원리금상환비율)</div>
+            <div class="term-desc"><strong>연소득 대비</strong> 모든 대출의 연간 원리금 상환액 비율. 대출 한도에 직접 영향을 줘요.</div>
+        </div>
+        <div class="term-item">
+            <div class="term-name">등기부등본</div>
+            <div class="term-desc">부동산의 <strong>소유권/권리관계</strong>(근저당, 압류 등)를 기록한 공식 문서. 계약 전 필수 확인 항목이에요.</div>
+        </div>
+        <div class="term-item">
+            <div class="term-name">중개수수료</div>
+            <div class="term-desc">매매가에 따라 법정 한도 내에서 중개사와 협의 (보통 <strong>0.4~0.9%</strong> 수준).</div>
+        </div>
+        <div class="term-item">
+            <div class="term-name">취득세</div>
+            <div class="term-desc">매수 시 납부하는 지방세. 주택 가격·규모·보유 주택 수에 따라 <strong style="color:var(--accent);">1~3% 이상</strong> 차등 적용돼요.</div>
+        </div>
+        <div class="term-item">
+            <div class="term-name">전입신고 / 확정일자</div>
+            <div class="term-desc">임차인이 <strong>대항력·우선변제권</strong>을 갖기 위한 절차. 이사 후 빠르게 처리하는 것이 중요해요.</div>
+        </div>
+    </div>
+</div>
+
+<!-- ── 가이드 챗봇 ── -->
+<div class="chat-panel anim-5" id="guideChatPanel" style="grid-column:1/-1;">
+    <div class="chat-header">
+        <div>첫 집 구매 가이드 챗봇 <span class="sub">GUIDE ASSISTANT</span></div>
+    </div>
+    <div class="chat-messages" id="guideChatMessages">
+        <div class="chat-msg bot">안녕하세요! 😊 처음 집을 구매하시나요? 절차나 용어가 헷갈리면 편하게 물어보세요.<br><br>예) "전세랑 매매 중에 뭐가 더 좋을까?", "취득세는 어떻게 계산해?", "생애최초 구매자가 받을 수 있는 대출이 뭐야?"</div>
+    </div>
+    <div style="display:flex;gap:8px;padding:0 22px 14px;flex-wrap:wrap;">
+        <button class="quick-btn" onclick="askGuideQuick('주택 매수 절차를 처음부터 끝까지 순서대로 알려줘')">매수 절차 전체 흐름</button>
+        <button class="quick-btn" onclick="askGuideQuick('생애최초 주택 구매자가 받을 수 있는 대출/혜택을 알려줘')">생애최초 혜택</button>
+        <button class="quick-btn" onclick="askGuideQuick('취득세는 어떻게 계산되고 언제 내야 해?')">취득세 알아보기</button>
+        <button class="quick-btn" onclick="askGuideQuick('계약 전에 꼭 확인해야 할 서류와 체크리스트를 알려줘')">계약 전 체크리스트</button>
+    </div>
+    <div class="chat-input-row">
+        <input id="guideChatInput" class="chat-input" type="text" placeholder="궁금한 점을 입력하세요..." onkeydown="if(event.key==='Enter') sendGuideChatMessage()">
+        <button class="chat-send" id="guideChatSendBtn" onclick="sendGuideChatMessage()">전송</button>
+    </div>
+</div>
+
+</main>
+
+<!-- ══════════════════════════════ FOOTER ══════════════════════════════ -->
+<footer style="position:relative;z-index:1;padding:20px 32px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;background:rgba(8,14,26,.6);">
+    <div style="font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;">오늘의집 · O2O Demand Forecasting Solution</div>
+    <div style="font-family:var(--mono);font-size:10px;color:var(--muted);">본 가이드는 일반 정보 제공용이며, 법률·세무·대출 관련 최종 판단은 전문가 상담을 권장합니다.</div>
+</footer>
+
+<!-- ══════════════════════════════ SCRIPT ══════════════════════════════ -->
+<script>
+// ── 시계
+function updateClock() {
+    const now = new Date();
+    document.getElementById('clock').textContent =
+        now.toLocaleDateString('ko-KR') + ' ' +
+        now.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+}
+updateClock();
+setInterval(updateClock, 1000);
+
+// ── 가이드 챗봇
+function appendGuideChatMessage(text, role) {
+    const messages = document.getElementById('guideChatMessages');
+    const div = document.createElement('div');
+    div.className = `chat-msg ${role}`;
+    div.textContent = text;
+    messages.appendChild(div);
+    messages.scrollTop = messages.scrollHeight;
+    return div;
+}
+
+function askGuideQuick(text) {
+    const input = document.getElementById('guideChatInput');
+    input.value = text;
+    sendGuideChatMessage();
+}
+
+async function sendGuideChatMessage() {
+    const input = document.getElementById('guideChatInput');
+    const sendBtn = document.getElementById('guideChatSendBtn');
+    const message = input.value.trim();
+    if (!message) return;
+
+    appendGuideChatMessage(message, 'user');
+    input.value = '';
+    sendBtn.disabled = true;
+
+    const loadingMsg = appendGuideChatMessage('생각 중...', 'bot loading');
+
+    try {
+        const res = await fetch('/api/guide-chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message })
+        });
+        const json = await res.json();
+
+        loadingMsg.classList.remove('loading');
+        loadingMsg.textContent = json.status === 'ok'
+            ? json.answer
+            : `오류: ${json.message}`;
+    } catch (e) {
+        loadingMsg.classList.remove('loading');
+        loadingMsg.textContent = '오류가 발생했습니다. 잠시 후 다시 시도해주세요.';
+    } finally {
+        sendBtn.disabled = false;
+        document.getElementById('guideChatMessages').scrollTop = document.getElementById('guideChatMessages').scrollHeight;
+    }
+}
+</script>
+</body>
+</html>

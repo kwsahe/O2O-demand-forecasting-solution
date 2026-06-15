@@ -82,11 +82,13 @@
 
 ## 프로젝트 개요
 
-아파트 **실거래가 데이터**와 **입주예정 물량 데이터**를 결합해  
-지역별 인테리어 시공 수요를 수치화하는 분석 파이프라인입니다.
+국토교통부 **아파트 매매·전월세 실거래가**, 한국부동산원 **입주예정물량**, 건축HUB **대수선 이력**
+데이터를 결합해 시군구별(서울·경기·인천·5대 광역시 총 102개) **인테리어 수요 점수(0~100점)**를
+산출하는 분석 파이프라인입니다.
 
-공공데이터 API를 연결하여 **매월 자동 수집 → 분석 → 대시보드 갱신**까지  
-end-to-end로 동작하는 것을 목표로 합니다.
+공공데이터 API를 연결하여 **자동 수집 → 분석 → 대시보드 갱신**까지 end-to-end로 동작하며,
+산출 결과는 Flask 기반 대시보드(랭킹/차트/네이버 지도)와 LLM 챗봇(Ollama)으로 제공됩니다.
+또한 사회초년생·첫 집 구매자를 위한 **"구매 가이드" 탭**(절차 안내 + 전용 가이드 챗봇)도 함께 제공합니다.
 
 ---
 
@@ -117,11 +119,14 @@ O2O-Demand-Forecasting-Solution/
 ├── data/
 │   ├── 아파트(매매)_실거래가_20260311170739.csv            # 국토부 실거래가 (초기 입력용)
 │   ├── 한국부동산원_주택공급정보_입주예정물량정보_20251231.csv  # 입주예정 (초기 입력용)
-│   ├── raw_api_collected.csv                     # 매매 실거래가 API 자동 수집 결과 (서울·경기·인천)
-│   ├── raw_rent_collected.csv                    # 전월세 실거래가 API 자동 수집 결과 (서울·경기·인천)
-│   ├── 인테리어_수요점수_결과.csv                  # 파이프라인 실행 결과 (시군구별)
+│   ├── raw_api_collected_all.csv                 # 매매 실거래가 API 수집 결과 (서울·경기·인천 + 5대 광역시)
+│   ├── raw_rent_collected_all.csv                # 전월세 실거래가 API 수집 결과 (서울·경기·인천 + 5대 광역시)
+│   ├── raw_renovation_collected.csv              # 건축HUB 대수선 이력 수집 결과
+│   ├── raw_interior_companies.csv                # 전국인테리어업체표준데이터 수집 결과 (연동 준비)
+│   ├── sigungu_coordinates.csv                   # 102개 시군구 중심 좌표 (네이버 지도 마커용)
+│   ├── 인테리어_수요점수_결과.csv                  # 파이프라인 실행 결과 (시군구별, 102개)
 │   ├── 시도별_수요집계_요약.csv                    # 파이프라인 실행 결과 (시도별 요약)
-│   └── chat_history.db                           # 챗봇 질문/응답 기록 (SQLite, git 제외)
+│   └── chat_history.db                           # 챗봇 질문/응답 기록 (SQLite, chat_type으로 구분, git 제외)
 │
 ├── notebooks/
 │   ├── 01_EDA_and_Hypothesis.ipynb               # 탐색적 데이터 분석
@@ -129,18 +134,24 @@ O2O-Demand-Forecasting-Solution/
 │   └── 03_API_Collection.ipynb                   # API 수집 & 파이프라인 실행
 │
 ├── src/
-│   ├── collector.py                              # ★ 공공데이터 API 자동 수집 모듈 (서울·경기·인천)
-│   ├── pipeline.py                               # ★ 인테리어 수요 점수 산출 파이프라인
+│   ├── collector.py                              # ★ 공공데이터 API 자동 수집 모듈 (매매/전월세/대수선/인테리어업체)
+│   ├── pipeline.py                               # ★ 인테리어 수요 점수 산출 파이프라인 (7개 지표)
 │   └── log_design.py                             # 로깅 유틸리티
 │
-├── templates/
-│   ├── index.html                                # 인터랙티브 수요 대시보드 (챗봇 상단 고정)
-│   └── analytics.html                            # 통계·분석 2페이지 (차트/테이블 모음)
+├── collect_metro5.py                             # 5대 광역시 데이터 수집 + 파이프라인 재실행 스크립트
+├── collect_renovation.py                         # 대수선 이력 수집 스크립트
+├── collect_interior_companies.py                 # 인테리어업체 데이터 수집 스크립트 (활용신청 필요)
 │
-├── app.py                                        # ★ Flask 웹 서버 (대시보드 + API + 챗봇)
+├── templates/
+│   ├── index.html                                # 메인 대시보드 (소개 카드, 지도, 랭킹, 챗봇)
+│   ├── analytics.html                            # 통계·분석 2페이지 (차트/테이블 모음)
+│   └── guide.html                                # 구매 가이드 탭 (절차 안내 + 가이드 전용 챗봇)
+│
+├── app.py                                        # ★ Flask 웹 서버 (대시보드 + API + 챗봇 2종)
 │
 ├── docs/                                         # 아키텍처 / ML 파이프라인 다이어그램
 ├── screenshots/                                  # 대시보드 스크린샷
+├── devlog/                                       # 날짜별 개발 일지 (로컬용, git 제외)
 │
 ├── venv/                                         # 가상환경 (git 제외)
 ├── .env                                          # API 키 등 환경변수 (git 제외)
@@ -301,37 +312,47 @@ pipeline = DemandForecastingPipeline(
 python app.py
 ```
 
-서버가 실행되면 브라우저에서 `http://localhost:5000` 으로 접속하면 대시보드가 표시됩니다.
+서버가 실행되면 브라우저에서 `http://localhost:8300` 으로 접속하면 대시보드가 표시됩니다.
 
 > `/api/collect`로 신규 데이터를 수집하려면 `.env` 또는 환경변수에 `API_KEY`가 설정되어 있어야 합니다.
+> 네이버 지도 카드를 사용하려면 `.env`에 `NAVER_MAP_CLIENT_ID`(Naver Cloud Platform Maps API 인증키)가 필요합니다.
 
 ### API 엔드포인트
 
 | 메서드 | 경로 | 설명 |
 |---|---|---|
-| `GET` | `/` | 대시보드 페이지 (`templates/index.html`) |
+| `GET` | `/` | 메인 대시보드 (`templates/index.html`) — 소개 카드, KPI, 차트, 네이버 지도, 랭킹 테이블, 챗봇 |
 | `GET` | `/analytics` | 통계·분석 2페이지 — 시도별/지역별 차트·테이블 모음 (`templates/analytics.html`) |
+| `GET` | `/guide` | 구매 가이드 탭 — 첫 집 구매 절차 안내 + 가이드 전용 챗봇 (`templates/guide.html`) |
 | `GET` | `/health` | 서버 상태 확인 |
 | `GET` | `/api/demand` | 인테리어 수요 점수 결과 조회 (`sido`, `top` 쿼리 파라미터로 필터링) |
 | `GET` | `/api/sido-summary` | 시도별 수요 점수 요약 조회 |
+| `GET` | `/api/map-data` | 네이버 지도 마커용 데이터 — 102개 시군구 좌표 + 수요 점수/등급/지표 |
 | `POST` | `/api/collect` | 공공데이터 API로 실거래가 수집 후 파이프라인 재실행 (`months`, `sigungu_code` 파라미터) |
 | `GET` | `/api/search` | 단지명(`type=apt`) 또는 지역명(`type=region`) 검색 (`q` 파라미터) |
-| `POST` | `/api/chat` | 수요 점수 데이터 기반 AI 챗봇 (`message` 파라미터, 질의·응답은 `data/chat_history.db`에 기록) |
+| `POST` | `/api/chat` | 수요 점수 데이터 기반 AI 챗봇 (`message` 파라미터, `chat_type='demand'`로 `data/chat_history.db`에 기록) |
+| `POST` | `/api/guide-chat` | 첫 집 구매 절차 안내 전용 AI 챗봇 (`message` 파라미터, `chat_type='guide'`로 기록, 데이터 컨텍스트 미포함) |
 
 #### 예시
 
 ```powershell
 # 서울 지역 수요 점수 TOP 10 조회
-curl "http://localhost:5000/api/demand?sido=서울&top=10"
+curl "http://localhost:8300/api/demand?sido=서울&top=10"
+
+# 지도용 데이터 (102개 시군구 좌표 + 지표)
+curl "http://localhost:8300/api/map-data"
 
 # 단지명 검색
-curl "http://localhost:5000/api/search?q=현대&type=apt"
+curl "http://localhost:8300/api/search?q=현대&type=apt"
 
 # 최근 12개월 데이터 재수집 + 파이프라인 재실행
-curl -X POST "http://localhost:5000/api/collect" -H "Content-Type: application/json" -d "{\"months\": 12}"
+curl -X POST "http://localhost:8300/api/collect" -H "Content-Type: application/json" -d "{\"months\": 12}"
 
 # 수요 점수 챗봇에게 질문
-curl -X POST "http://localhost:5000/api/chat" -H "Content-Type: application/json" -d "{\"message\": \"서초구 수요 점수 알려줘\"}"
+curl -X POST "http://localhost:8300/api/chat" -H "Content-Type: application/json" -d "{\"message\": \"서초구 수요 점수 알려줘\"}"
+
+# 구매 가이드 챗봇에게 질문
+curl -X POST "http://localhost:8300/api/guide-chat" -H "Content-Type: application/json" -d "{\"message\": \"중도금이 뭔가요?\"}"
 ```
 
 ### AI 챗봇 (대시보드 상단 고정)
@@ -379,16 +400,24 @@ CHAT_MODEL=qwen2.5:3b
 > 1기 신도시 재정비 연식대와 겹쳐 리모델링 관심 최고조.  
 > 욕실·주방·바닥재 등 전면 교체 수요 + 고단가 시공 상품 구매 가능성 높음.
 
-### 인테리어 수요 점수 가중치
+### 인테리어 수요 점수 가중치 (7개 지표)
 
 | 지표 | 가중치 | 비즈니스 이유 |
 |---|---|---|
-| 거래건수 | 25% | 매매 시장 볼륨 — 수요 규모 |
-| 거래금액 | 20% | 구매력 — 고가 지역일수록 고급 시공 |
+| 거래건수 | 20% | 매매 시장 볼륨 — 수요 규모 |
+| 전월세거래건수 | 20% | 임대 수요 — 전월세 거래가 많을수록 신규 세입자의 입주 전 부분 인테리어 수요가 많음 |
+| 거래금액 | 15% | 구매력 — 고가 지역일수록 고급 시공 |
 | 노후도 | 15% | 리모델링 시급성 |
 | 전용면적 | 10% | 시공 규모 — 매출 기여 |
 | 신규입주 | 10% | 신규 입주 수요 |
-| **전월세거래건수** | **20%** | **임대 수요 — 전월세 거래가 많을수록 신규 세입자의 입주 전 부분 인테리어 수요가 많음** |
+| **대수선이력건수** | **10%** | **건축HUB 대수선(증축/개축 등) 이력 — 시공 수요가 실제로 발생한 지역 신호** |
+
+> Min-Max 정규화(0~100) 후 가중합산으로 `인테리어_수요점수`를 산출하며,
+> 점수에 따라 S(60~100)/A(30~59)/B(0~29) 등급으로 분류하고 각 등급을 다시 `+`/`0`/`-`로
+> 세분화(예: S+, A0, B-)해 대시보드 랭킹·지도에 표시합니다.
+>
+> `인테리어업체수`(전국인테리어업체표준데이터, 연동 준비 중)는 현재 정보성 컬럼으로만 제공되며
+> 가중치에는 포함되어 있지 않습니다.
 
 ---
 
@@ -405,33 +434,46 @@ CHAT_MODEL=qwen2.5:3b
 | `fetch_recent_months_rent(months=12)` | 오늘 기준 최근 N개월 전월세 실거래가 자동 수집 |
 | `normalize_columns(df)` | 매매 API 영문 컬럼 → pipeline.py 한글 컬럼 변환 |
 | `normalize_rent_columns(df)` | 전월세 API 영문 컬럼 → pipeline.py 한글 컬럼 변환 |
+| `fetch_renovation(sigungu_code, bdong_code)` / `fetch_renovation_for_region(...)` | 건축HUB 대수선 이력 조회 (법정동 단위) |
+| `normalize_renovation_columns(df)` | 대수선 이력 API 컬럼 → 시군구 집계용 컬럼 변환 |
+| `fetch_interior_companies_all(ctpv_list)` | 전국인테리어업체표준데이터 시도별 전체 수집 (페이지네이션) |
+| `normalize_interior_company_columns(df)` | 인테리어업체 API 컬럼 → 시군구 매칭 컬럼 변환 |
 
 **사용 API**
 - 매매: `https://apis.data.go.kr/1613000/RTMSDataSvcAptTradeDev/getRTMSDataSvcAptTradeDev`
 - 전월세: `https://apis.data.go.kr/1613000/RTMSDataSvcAptRent/getRTMSDataSvcAptRent` (동일한 `API_KEY` 사용)
+- 대수선 이력: `https://apis.data.go.kr/1613000/ArchPmsHubService/getApImprprInfo`
+- 인테리어업체: `https://api.data.go.kr/openapi/tn_pubr_public_interior_api` (별도 활용신청 필요)
 
 ### `pipeline.py` — 수요 점수 산출 파이프라인
 
 | 메서드 | 역할 |
 |---|---|
-| `load_data()` | 매매/입주예정/전월세 CSV 또는 DataFrame 로드 |
+| `load_data()` | 매매/입주예정/전월세/대수선/인테리어업체 CSV 또는 DataFrame 로드 |
 | `preprocess_transactions()` | 매매 실거래가 정제 + 노후도 계산 + 세그먼트 분류 |
 | `preprocess_rent()` | 전월세 실거래가 정제 + 노후도 계산 + 세그먼트 분류 (없으면 0건 처리) |
+| `preprocess_renovation()` | 대수선 이력 정제 (없으면 0건 처리) |
+| `preprocess_interior_company()` | 인테리어업체 데이터 정제 + 시군구 매칭 (없으면 0건 처리) |
 | `preprocess_supply()` | 입주예정 정제 + 연도 필터링 |
-| `aggregate_and_merge()` | 시군구 단위 집계 + LEFT JOIN (매매 + 입주예정 + 전월세) |
-| `calculate_demand_score()` | 6개 지표 Min-Max 정규화 후 가중합산 |
+| `aggregate_and_merge()` | 시군구 단위 집계 + LEFT JOIN (매매 + 입주예정 + 전월세 + 대수선 + 인테리어업체) |
+| `calculate_demand_score()` | 7개 지표 Min-Max 정규화 후 가중합산 |
 
 ---
 
-## 📊 분석 결과 (서울·경기·인천, Old Apartment 기준)
+## 📊 분석 결과 (서울·경기·인천·5대 광역시, Old Apartment 기준)
 
-총 224,214건 수집 → 63개 시군구(서울 25 / 경기 29 / 인천 9) 분석 결과:
+총 45,598건 거래 → 102개 시군구(서울 25 / 경기 29 / 인천 9 / 부산 16 / 대구 8 / 광주 5 / 대전 5 / 울산 5) 분석 결과:
 
 | 시도 | 시군구 수 | 총 거래건수 | 평균 수요 점수 | 최고 수요 점수 | 총 신규입주 세대수 |
 |---|---|---|---|---|---|
-| 서울 | 25 | 9,719 | 32.79 | 61.15 | 27,158 |
-| 경기 | 29 | 17,192 | 26.71 | 55.91 | 54,704 |
-| 인천 | 9 | 3,558 | 23.97 | 35.92 | 15,161 |
+| 서울 | 25 | 9,719 | 29.01 | 51.16 | 27,158 |
+| 경기 | 29 | 17,192 | 25.31 | 64.13 | 54,704 |
+| 대전 | 5 | 2,333 | 22.22 | 28.98 | 11,490 |
+| 광주 | 5 | 2,081 | 21.74 | 34.47 | 6,179 |
+| 인천 | 9 | 3,558 | 21.13 | 35.12 | 15,161 |
+| 부산 | 16 | 4,611 | 19.71 | 32.08 | 11,489 |
+| 대구 | 8 | 3,937 | 19.69 | 32.31 | 10,752 |
+| 울산 | 5 | 2,167 | 19.38 | 23.91 | 4,478 |
 
 ---
 
@@ -440,11 +482,13 @@ CHAT_MODEL=qwen2.5:3b
 ```
 ✅ STEP 1   data/            CSV 데이터 확보 (국토부 + 한국부동산원)
 ✅ STEP 2   src/pipeline.py  인테리어 수요 점수 파이프라인 구축
-✅ STEP 3   src/collector.py 공공데이터 API 자동 수집 모듈 구축 (서울 → 경기·인천 확장)
-✅ STEP 4   templates/       인터랙티브 수요 대시보드 + 통계·분석 2페이지
+✅ STEP 3   src/collector.py 공공데이터 API 자동 수집 모듈 구축 (서울 → 경기·인천 → 5대 광역시 확장, 102개 시군구)
+✅ STEP 4   templates/       인터랙티브 수요 대시보드 + 통계·분석 2페이지 + 네이버 지도 + 구매 가이드 탭
 ✅ STEP 5   app.py           Flask API 연동 — API 수집 → 파이프라인 end-to-end 연결
-✅ STEP 6   app.py           AI 챗봇 (오타 허용 단지 검색 + 대화 기록 SQLite 저장)
-⬜ STEP 7   자동화            cron 스케줄러로 매월 자동 갱신
+✅ STEP 6   app.py           AI 챗봇 2종 (수요 점수 챗봇 + 구매 가이드 챗봇, 대화 기록 SQLite 저장)
+✅ STEP 7   pipeline.py       대수선 이력(7번째 지표) 통합 + 등급 세분화(S/A/B → +/0/-)
+⬜ STEP 8   전국인테리어업체표준데이터 연동 (활용신청 진행 중) → 업체 밀도 지표 반영
+⬜ STEP 9   자동화            cron 스케줄러로 매월 자동 갱신
 ```
 
 ---
@@ -462,6 +506,9 @@ CHAT_MODEL=qwen2.5:3b
 
 | 데이터 | 출처 | 수집 방식 |
 |---|---|---|
-| 아파트 매매 실거래가 (서울·경기·인천 77개 시군구) | 국토교통부 실거래가 공개시스템 | API 자동 수집 (`collector.py`) |
-| 아파트 전월세 실거래가 (서울·경기·인천 77개 시군구) | 국토교통부 실거래가 공개시스템 | API 자동 수집 (`collector.py`) |
+| 아파트 매매 실거래가 (서울·경기·인천·5대 광역시 102개 시군구) | 국토교통부 실거래가 공개시스템 | API 자동 수집 (`collector.py`, `collect_metro5.py`) |
+| 아파트 전월세 실거래가 (서울·경기·인천·5대 광역시 102개 시군구) | 국토교통부 실거래가 공개시스템 | API 자동 수집 (`collector.py`, `collect_metro5.py`) |
 | 입주예정 물량 (전국 17개 시도) | 한국부동산원 주택공급정보 | CSV 수동 다운로드 |
+| 대수선 이력 | 건축데이터 민간개방시스템(건축HUB) ArchPmsHubService | API 자동 수집 (`collect_renovation.py`) |
+| 인테리어업체 현황 (연동 준비 중) | 공공데이터포털 전국인테리어업체표준데이터 | API 자동 수집 (`collect_interior_companies.py`, 활용신청 필요) |
+| 시군구 중심 좌표 | 정적 매핑 테이블 (`data/sigungu_coordinates.csv`) | 수동 작성 |
