@@ -295,6 +295,29 @@ def find_region_context(message: str, df: pd.DataFrame, sido_summary: pd.DataFra
     return "\n\n" + "\n\n".join(parts)
 
 
+def build_ranking_summary(df: pd.DataFrame, top_n: int = 10) -> str:
+    """수요 점수 상위/하위 지역을 명확한 순위 텍스트로 정리한다.
+    작은 모델이 63행짜리 전체 표에서 직접 최댓값을 찾는 데 자주 실패하므로,
+    '몇 위 = 어디, 몇 점'을 미리 계산해 명시적으로 알려준다."""
+    lines = ["[수요 점수 상위 지역 순위 — 반드시 이 순위를 기준으로 답변하세요]"]
+    for i, (_, row) in enumerate(df.head(top_n).iterrows(), start=1):
+        lines.append(
+            f"{i}위: {row['시도']} {row['시군구']} "
+            f"(인테리어_수요점수 {row['인테리어_수요점수']}점, "
+            f"거래건수 {int(row['거래건수']):,}건, "
+            f"전월세거래건수 {int(row['전월세거래건수']):,}건, "
+            f"대수선이력건수 {int(row['대수선이력건수']):,}건, "
+            f"평균노후도 {row['평균노후도_년']}년)"
+        )
+    lines.append("")
+    lines.append("[수요 점수 하위 지역 순위]")
+    bottom = df.tail(5).iloc[::-1]
+    for _, row in bottom.iterrows():
+        rank = int(df["인테리어_수요점수"].rank(ascending=False, method="min")[row.name])
+        lines.append(f"{rank}위: {row['시도']} {row['시군구']} (인테리어_수요점수 {row['인테리어_수요점수']}점)")
+    return "\n".join(lines)
+
+
 def get_recent_chat_history(limit: int = 3):
     """최근 대화 기록을 가져와 멀티턴 대화(이어지는 질문)를 지원한다."""
     conn = sqlite3.connect(CHAT_DB_PATH)
@@ -323,8 +346,13 @@ def chat():
         system_prompt = (
             "당신은 '오늘의집 O2O 인테리어 수요 예측 대시보드'의 친절한 데이터 분석 도우미입니다. "
             "항상 따뜻하고 다정한 말투로, 처음 보는 사람도 이해할 수 있도록 쉽게 풀어서 한국어로 답변하세요. "
-            "숫자만 툭 던지지 말고, 그 숫자가 어떤 의미인지, 왜 그런지까지 함께 설명해주세요. "
-            "지역별 수치를 묻는 질문은 아래 CSV 데이터를 근거로 답하고, "
+            "숫자만 툭 던지지 말고, 왜 그 지역의 점수가 높은지/낮은지 '근거 원인'까지 함께 설명해주세요. "
+            "예를 들어 '거래건수가 OO건으로 많고, 전월세거래건수도 OO건으로 활발해서 점수가 높습니다'처럼 "
+            "그 지역의 어떤 세부 지표(거래건수, 거래금액, 노후도, 면적, 신규입주, 전월세거래건수, 대수선이력건수) 값이 "
+            "다른 지역에 비해 두드러지는지 구체적인 숫자를 들어 설명하세요. "
+            "'순위'나 '최고/최저'를 묻는 질문에는 아래 [수요 점수 상위/하위 지역 순위] 블록의 순서를 그대로 사용하세요 "
+            "(직접 표를 다시 계산하거나 추측하지 마세요). "
+            "지역별 수치를 묻는 질문은 아래 데이터를 근거로 답하고, "
             "'인테리어 수요 점수가 무엇인지/어떻게 계산되는지' 같은 질문은 아래 [인테리어 수요 점수 산출 방식] 설명을 활용해 "
             "단계별로 자세하고 친절하게 설명하세요. "
             "사용자가 특정 아파트 단지명이나 주소(법정동)를 언급하면, 아래 [질문과 관련된 단지 최근 실거래 내역]을 참고해 "
@@ -380,19 +408,27 @@ def chat():
             "- 총거래건수: 해당 시/도에 속한 모든 시군구 거래건수의 합계\n"
             "- 평균수요점수 / 최고수요점수: 해당 시/도에 속한 시군구들의 인테리어_수요점수 평균값 / 최고값\n"
             "- 총신규입주세대수: 해당 시/도에 속한 모든 시군구 신규입주_세대수의 합계\n\n"
-            "[시군구별 인테리어 수요 점수 (수요 점수 높은 순)]\n"
+            "반드시 한국어로만 답변하세요. 다른 언어(영어, 중국어, 일본어 등)는 절대 사용하지 마세요."
+        )
+
+        # 실제 수치 데이터는 별도 system 메시지로 분리해 대화 맨 끝(사용자 질문 바로 앞)에 배치한다.
+        # 시스템 프롬프트 안에 모든 데이터를 다 넣으면 작은 모델이 앞부분 내용을
+        # 잘 활용하지 못해 순위/지역 데이터를 잘못 읽는 문제가 있었음.
+        data_context = (
+            f"{build_ranking_summary(df)}\n\n"
+            "[전체 시군구별 인테리어 수요 점수 (수요 점수 높은 순)]\n"
             f"{df.to_csv(index=False)}\n"
             "[시도별 요약]\n"
             f"{sido_summary.to_csv(index=False)}"
             f"{find_region_context(message, df, sido_summary)}"
-            f"{find_apartment_context(message)}\n\n"
-            "반드시 한국어로만 답변하세요. 다른 언어(영어, 중국어, 일본어 등)는 절대 사용하지 마세요."
+            f"{find_apartment_context(message)}"
         )
 
         messages = [{"role": "system", "content": system_prompt}]
         for past_user, past_answer in get_recent_chat_history():
             messages.append({"role": "user", "content": past_user})
             messages.append({"role": "assistant", "content": past_answer})
+        messages.append({"role": "system", "content": data_context})
         messages.append({"role": "user", "content": message})
 
         res = requests.post(
@@ -401,6 +437,9 @@ def chat():
                 "model": CHAT_MODEL,
                 "messages": messages,
                 "stream": False,
+                # 기본 num_ctx(2048)는 시군구별 전체 표를 담은 시스템 프롬프트보다 작아서
+                # 앞부분 데이터가 잘려나가 모델이 잘못된 값을 답하는 원인이 됨 -> 충분히 키움
+                "options": {"num_ctx": 8192},
             },
             timeout=120,
         )
