@@ -246,8 +246,28 @@ class DemandForecastingPipeline:
             print("[PREPROCESS] 인테리어업체 데이터 없음 (인테리어업체수는 0으로 처리됩니다)")
             return self
 
+        from src.collector import SIGUNGU_CODE_TO_FULL_NAME
+
+        # 숫자코드("11650.0") → 파이프라인 시군구_코드("서초구") 변환 맵
+        # SIGUNGU_CODE_TO_FULL_NAME: {"11650": "서울특별시 서초구"} → split()[1] = "서초구"
+        code_to_name = {
+            code: full.split()[1]
+            for code, full in SIGUNGU_CODE_TO_FULL_NAME.items()
+            if len(full.split()) >= 2
+        }
+
         df = self.df_interior_company.copy()
-        df = df.dropna(subset=["시군구_코드"]).copy()
+
+        def resolve_sigungu_code(row):
+            code = row.get("시군구_코드")
+            # 숫자 코드가 있으면 파이프라인 시군구명으로 변환
+            if pd.notna(code) and str(code).replace(".", "").isdigit():
+                return code_to_name.get(str(int(float(code))), "")
+            # 숫자 코드 없으면 시군구명 직접 사용 (경기 수원시·안양시 등 상위 시 케이스)
+            return str(row.get("시군구명", ""))
+
+        df["시군구_코드"] = df.apply(resolve_sigungu_code, axis=1)
+        df = df[df["시군구_코드"] != ""].copy()
 
         sido_map = {
             "서울특별시": "서울", "인천광역시": "인천", "경기도": "경기",
