@@ -993,6 +993,7 @@ function renderMap(data) {
                     <div style="display:flex;justify-content:space-between;margin-bottom:3px;"><span style="color:#888;">거래건수</span>${(d.거래건수 || 0).toLocaleString()}건</div>
                     <div style="display:flex;justify-content:space-between;margin-bottom:3px;"><span style="color:#888;">전월세거래건수</span>${(d.전월세거래건수 || 0).toLocaleString()}건</div>
                     <div style="display:flex;justify-content:space-between;margin-bottom:3px;"><span style="color:#888;">대수선이력건수</span>${(d.대수선이력건수 || 0).toLocaleString()}건</div>
+                    <div style="display:flex;justify-content:space-between;margin-bottom:3px;"><span style="color:#888;">인테리어업체수</span>${d.인테리어업체수 > 0 ? (d.인테리어업체수 || 0).toLocaleString() + '개' : '—'}</div>
                     <div style="display:flex;justify-content:space-between;margin-bottom:3px;"><span style="color:#888;">평균거래금액</span>${formatMoney(d.평균거래금액_만원)}원</div>
                     <div style="display:flex;justify-content:space-between;margin-bottom:3px;"><span style="color:#888;">평균면적</span>${formatArea(d.평균면적_m2)}</div>
                     <div style="display:flex;justify-content:space-between;"><span style="color:#888;">평균노후도</span>${d.평균노후도_년}년</div>
@@ -1204,6 +1205,7 @@ function resetTableHead() {
         <th>거래건수</th>
         <th>전월세거래건수</th>
         <th>대수선이력건수</th>
+        <th title="전국인테리어업체표준데이터 — 지자체 자율등록으로 일부 지역만 표시">인테리어업체수 ℹ</th>
         <th>평균거래금액</th>
         <th>평균면적</th>
         <th>평균노후도</th>
@@ -1231,6 +1233,9 @@ function updateTable(data) {
             <td style="font-family:var(--mono);color:var(--text2);">${(d.거래건수 || 0).toLocaleString()}건</td>
             <td style="font-family:var(--mono);color:var(--text2);">${(d.전월세거래건수 || 0).toLocaleString()}건</td>
             <td style="font-family:var(--mono);color:var(--text2);">${(d.대수선이력건수 || 0).toLocaleString()}건</td>
+            <td style="font-family:var(--mono);color:${d.인테리어업체수 > 0 ? 'var(--text1)' : 'var(--text3)'};">
+                ${d.인테리어업체수 > 0 ? (d.인테리어업체수 || 0).toLocaleString() + '개' : '—'}
+            </td>
             <td style="font-family:var(--mono);color:var(--text2);">${formatMoney(d.평균거래금액_만원)}</td>
             <td style="font-family:var(--mono);color:var(--text2);">${formatArea(d.평균면적_m2)}</td>
             <td style="font-family:var(--mono);color:var(--text2);">${d.평균노후도_년}년</td>
