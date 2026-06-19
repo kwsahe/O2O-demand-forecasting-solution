@@ -410,6 +410,22 @@ class DemandForecastingPipeline:
             "인테리어_수요점수",
         ]
 
+        # ── 예상 시공비 추정 (interior_cost_reference.md 기반, 비공식 참고용)
+        # 평형 환산: 1평 = 3.3058㎡
+        # 단가 범위: 올수리 기준 하한 150만/평, 중급 리모델링 기준 상한 220만/평
+        # 노후도가 20년 이상이면 전체 리모델링 상한을 300만/평으로 상향
+        pyeong = df_result["평균면적_m2"] / 3.3058
+        is_very_old = df_result["평균노후도_년"] >= 20
+
+        df_result["예상시공비_하한_만원"] = (pyeong * 150).round(0).astype(int)
+        df_result["예상시공비_상한_만원"] = np.where(
+            is_very_old, (pyeong * 300).round(0), (pyeong * 220).round(0)
+        ).astype(int)
+
+        # 시장 규모 추정: 거래건수 × 예상 시공비 중간값
+        mid = (df_result["예상시공비_하한_만원"] + df_result["예상시공비_상한_만원"]) / 2
+        df_result["시장규모_추정_억"] = (df_result["거래건수"] * mid / 10000).round(1)
+
         sido_summary = (
             df_result.groupby("시도")
             .agg(
