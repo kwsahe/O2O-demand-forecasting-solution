@@ -122,7 +122,8 @@ O2O-Demand-Forecasting-Solution/
 │   ├── raw_api_collected_all.csv                 # 매매 실거래가 API 수집 결과 (서울·경기·인천 + 5대 광역시)
 │   ├── raw_rent_collected_all.csv                # 전월세 실거래가 API 수집 결과 (서울·경기·인천 + 5대 광역시)
 │   ├── raw_renovation_collected.csv              # 건축HUB 대수선 이력 수집 결과
-│   ├── raw_interior_companies.csv                # 전국인테리어업체표준데이터 수집 결과 (연동 준비)
+│   ├── raw_interior_companies.csv                # 전국인테리어업체표준데이터 수집 결과
+│   ├── raw_sbiz_interior_stores.csv              # 소상공인 상가정보 기준 인테리어 관련 상가 수 집계 결과
 │   ├── sigungu_coordinates.csv                   # 102개 시군구 중심 좌표 (네이버 지도 마커용)
 │   ├── 인테리어_수요점수_결과.csv                  # 파이프라인 실행 결과 (시군구별, 102개)
 │   ├── 시도별_수요집계_요약.csv                    # 파이프라인 실행 결과 (시도별 요약)
@@ -141,6 +142,7 @@ O2O-Demand-Forecasting-Solution/
 ├── collect_metro5.py                             # 5대 광역시 데이터 수집 + 파이프라인 재실행 스크립트
 ├── collect_renovation.py                         # 대수선 이력 수집 스크립트
 ├── collect_interior_companies.py                 # 인테리어업체 데이터 수집 스크립트 (활용신청 필요)
+├── collect_interior_stores.py                    # 소상공인 상가정보 기반 인테리어 관련 상가 수집 스크립트 (활용신청 필요)
 │
 ├── templates/
 │   ├── index.html                                # 메인 대시보드 (소개 카드, 지도, 랭킹, 챗봇)
@@ -202,7 +204,13 @@ pip install -r requirements.txt
    - → `.env`의 `API_KEY`에 사용 (실거래 데이터 수집용)
 3. (선택) **"국토교통부\_공동주택 기본정보제공 서비스"** 검색 → 활용신청
    - → `.env`의 `APT_BASIC_INFO_API_KEY`에 사용 (단지코드·세대수 등 기본정보 조회용)
-4. 마이페이지 → 인증키 관리 → **일반 인증키(Decoding)** 복사
+4. (선택) **"전국인테리어업체표준데이터"** 검색 → 활용신청
+   - 직접 링크: https://www.data.go.kr/data/15102725/openapi.do
+   - → `.env`의 `INTERIOR_API_KEY`(없으면 `API_KEY`로 폴백)에 사용 (`collect_interior_companies.py`)
+5. (선택) **"소상공인시장진흥공단_상가(상권)정보"** 검색 → 활용신청
+   - 직접 링크: https://www.data.go.kr/data/15012005/openapi.do
+   - → `.env`의 `SBIZ_API_KEY`(없으면 `API_KEY`로 폴백)에 사용 (`collect_interior_stores.py`)
+6. 마이페이지 → 인증키 관리 → **일반 인증키(Decoding)** 복사
 
 > ⚠️ **키 보안 주의사항**  
 > 인증키를 코드나 GitHub에 직접 입력하지 마세요.  
@@ -362,6 +370,8 @@ curl -X POST "http://localhost:8300/api/guide-chat" -H "Content-Type: applicatio
 
 - 아파트 단지명/법정동을 언급하면 실거래 데이터에서 관련 내역을 찾아 답변에 활용합니다.
   오타나 띄어쓰기가 달라도(`레미안서초` → `래미안서초...`) 부분일치 + `difflib` 유사도 매칭으로 인식합니다.
+- "OO 예상 시공비/시장 규모 얼마야?" 같은 질문에도 답할 수 있도록, 시스템 프롬프트에 정보성 컬럼
+  (등록업체수/상가업체수/예상시공비/시장규모)의 의미와 어떤 질문에 어떤 컬럼을 우선 사용해야 하는지 명시해뒀습니다.
 - 모든 질문/응답은 `data/chat_history.db`(SQLite, `chat_logs` 테이블)에 자동 기록됩니다.
 
 ```powershell
@@ -415,9 +425,21 @@ CHAT_MODEL=qwen2.5:3b
 > Min-Max 정규화(0~100) 후 가중합산으로 `인테리어_수요점수`를 산출하며,
 > 점수에 따라 S(60~100)/A(30~59)/B(0~29) 등급으로 분류하고 각 등급을 다시 `+`/`0`/`-`로
 > 세분화(예: S+, A0, B-)해 대시보드 랭킹·지도에 표시합니다.
->
-> `인테리어업체수`(전국인테리어업체표준데이터, 연동 준비 중)는 현재 정보성 컬럼으로만 제공되며
-> 가중치에는 포함되어 있지 않습니다.
+
+### 정보성 컬럼 (가중치 미포함)
+
+수요 점수 산출에는 사용하지 않지만, 영업·시장 분석 참고용으로 대시보드에 함께 표시하는 컬럼입니다.
+
+| 컬럼 | 출처 | 설명 |
+|---|---|---|
+| `인테리어업체수` | 전국인테리어업체표준데이터 | 지자체 자율등록 방식이라 일부 지역만 값이 있음(102개 시군구 중 약 23개) |
+| `소상공인_인테리어업체수` | 소상공인시장진흥공단 상가(상권)정보 | 인테리어 디자인업·건축자재/가구 소매·건축설계 등 7개 업종 기준, **102개 시군구 전체 커버** |
+| `예상시공비_하한_만원` / `예상시공비_상한_만원` | 자체 추정 (`devlog/interior_cost_reference.md` 기준) | 평균 면적을 평으로 환산 후 올수리 평당 150만원(하한) ~ 220만원(상한, 노후도 20년+ 는 300만원) 적용 |
+| `시장규모_추정_억` | 자체 추정 | 거래건수 × 예상 시공비 중간값 ÷ 10,000 |
+
+> `인테리어업체수`(전국표준데이터)는 등록 누락 지역이 많아 신뢰도가 낮으므로, 업체/경쟁 밀도를
+> 참고할 때는 전 지역이 커버되는 `소상공인_인테리어업체수`를 우선 사용하는 것을 권장합니다.
+> 예상 시공비·시장 규모는 비공식 참고용 추정치이며 실제 시공 단가와 다를 수 있습니다.
 
 ---
 
@@ -439,11 +461,20 @@ CHAT_MODEL=qwen2.5:3b
 | `fetch_interior_companies_all(ctpv_list)` | 전국인테리어업체표준데이터 시도별 전체 수집 (페이지네이션) |
 | `normalize_interior_company_columns(df)` | 인테리어업체 API 컬럼 → 시군구 매칭 컬럼 변환 |
 
+**`SmallBusinessCollector` — 소상공인 상가정보 API 수집기**
+
+| 메서드 | 역할 |
+|---|---|
+| `fetch_count_by_upjong(sgg_code, sclsCd)` | 시군구코드 + 업종 소분류코드 조합으로 해당 상가 수(`totalCount`)만 조회 |
+| `fetch_interior_store_counts(sido_sgg_pairs)` | (시도, 시군구) 쌍 목록에 대해 인테리어 관련 7개 업종 코드를 모두 조회·합산 |
+
 **사용 API**
 - 매매: `https://apis.data.go.kr/1613000/RTMSDataSvcAptTradeDev/getRTMSDataSvcAptTradeDev`
 - 전월세: `https://apis.data.go.kr/1613000/RTMSDataSvcAptRent/getRTMSDataSvcAptRent` (동일한 `API_KEY` 사용)
 - 대수선 이력: `https://apis.data.go.kr/1613000/ArchPmsHubService/getApImprprInfo`
 - 인테리어업체: `https://api.data.go.kr/openapi/tn_pubr_public_interior_api` (별도 활용신청 필요)
+- 소상공인 상가정보: `https://apis.data.go.kr/B553077/api/open/sdsc2/storeListInDong` (별도 활용신청 필요,
+  `divId=signguCd`로 시군구 단위 조회 + `indsSclsCd`로 업종 소분류 필터링)
 
 ### `pipeline.py` — 수요 점수 산출 파이프라인
 
@@ -487,7 +518,8 @@ CHAT_MODEL=qwen2.5:3b
 ✅ STEP 5   app.py           Flask API 연동 — API 수집 → 파이프라인 end-to-end 연결
 ✅ STEP 6   app.py           AI 챗봇 2종 (수요 점수 챗봇 + 구매 가이드 챗봇, 대화 기록 SQLite 저장)
 ✅ STEP 7   pipeline.py       대수선 이력(7번째 지표) 통합 + 등급 세분화(S/A/B → +/0/-)
-⬜ STEP 8   전국인테리어업체표준데이터 연동 (활용신청 진행 중) → 업체 밀도 지표 반영
+✅ STEP 8   전국인테리어업체표준데이터 + 소상공인 상가정보 API 연동 → 인테리어업체수/상가업체수
+            정보성 컬럼 추가, 예상 시공비·시장 규모 추정 컬럼 추가
 ⬜ STEP 9   자동화            cron 스케줄러로 매월 자동 갱신
 ```
 
@@ -510,5 +542,6 @@ CHAT_MODEL=qwen2.5:3b
 | 아파트 전월세 실거래가 (서울·경기·인천·5대 광역시 102개 시군구) | 국토교통부 실거래가 공개시스템 | API 자동 수집 (`collector.py`, `collect_metro5.py`) |
 | 입주예정 물량 (전국 17개 시도) | 한국부동산원 주택공급정보 | CSV 수동 다운로드 |
 | 대수선 이력 | 건축데이터 민간개방시스템(건축HUB) ArchPmsHubService | API 자동 수집 (`collect_renovation.py`) |
-| 인테리어업체 현황 (연동 준비 중) | 공공데이터포털 전국인테리어업체표준데이터 | API 자동 수집 (`collect_interior_companies.py`, 활용신청 필요) |
+| 인테리어업체 현황 (정보성 컬럼) | 공공데이터포털 전국인테리어업체표준데이터 | API 자동 수집 (`collect_interior_companies.py`, 활용신청 필요) |
+| 인테리어 관련 상가 현황 (정보성 컬럼, 전 지역 커버) | 공공데이터포털 소상공인시장진흥공단 상가(상권)정보 | API 자동 수집 (`collect_interior_stores.py`, 활용신청 필요) |
 | 시군구 중심 좌표 | 정적 매핑 테이블 (`data/sigungu_coordinates.csv`) | 수동 작성 |
