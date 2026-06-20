@@ -1,4 +1,5 @@
 import time
+import requests
 import pandas as pd
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
@@ -637,6 +638,104 @@ class ApartmentDataCollector:
 
         keep = ["업체명", "시도명", "시군구명", "도로명주소", "총직원수", "시군구_코드"]
         return df[[c for c in keep if c in df.columns]]
+
+
+# 소상공인 상가정보 API 기준 인테리어 관련 소분류 업종 코드
+INTERIOR_UPJONG_CODES = [
+    "M11201",  # 인테리어 디자인업
+    "G21002",  # 벽지/장판/마루 소매업
+    "G21001",  # 철물/공구 소매업
+    "G21003",  # 건설/건축자재 소매업
+    "G21099",  # 기타 건설/건축자재 소매업
+    "G21101",  # 가구 소매업
+    "M10901",  # 건축 설계 및 관련 서비스업
+]
+
+# (시도약칭, 시군구명) → API 코드 목록 매핑 (시도+시군구 조합으로 중복 방지)
+_SIDO_SHORT_MAP = {
+    "서울특별시": "서울", "인천광역시": "인천", "경기도": "경기",
+    "부산광역시": "부산", "대구광역시": "대구", "광주광역시": "광주",
+    "대전광역시": "대전", "울산광역시": "울산",
+}
+
+def _build_sido_sgg_to_api_codes():
+    from collections import defaultdict
+    mapping = defaultdict(list)
+    for code, full in SIGUNGU_CODE_TO_FULL_NAME.items():
+        parts = full.split()
+        if len(parts) >= 2:
+            sido_full = parts[0]
+            sido_short = _SIDO_SHORT_MAP.get(sido_full, sido_full)
+            sgg_name = parts[1]
+            mapping[(sido_short, sgg_name)].append(code)
+    return dict(mapping)
+
+SIDO_SGG_TO_API_CODES = _build_sido_sgg_to_api_codes()
+
+
+class SmallBusinessCollector:
+    """소상공인시장진흥공단 상가(상권)정보 API 수집기.
+
+    API 엔드포인트: storeListInDong (행정동/시군구 단위 상가업소 조회)
+    활용신청: https://www.data.go.kr/data/15012005/openapi.do
+    """
+
+    BASE_URL = "https://apis.data.go.kr/B553077/api/open/sdsc2/storeListInDong"
+
+    def __init__(self, api_key: str):
+        self.api_key = api_key
+
+    def fetch_count_by_upjong(self, sgg_code: str, sclsCd: str) -> int:
+        """시군구코드 + 소분류업종코드로 totalCount만 반환 (numOfRows=1 최소 요청)."""
+        params = {
+            "serviceKey": self.api_key,
+            "pageNo": 1,
+            "numOfRows": 1,
+            "type": "json",
+            "divId": "signguCd",
+            "key": sgg_code,
+            "indsSclsCd": sclsCd,
+        }
+        try:
+            res = requests.get(self.BASE_URL, params=params, timeout=10)
+            if res.status_code == 200 and res.text.strip():
+                j = res.json()
+                if j.get("header", {}).get("resultCode") == "00":
+                    return j.get("body", {}).get("totalCount") or 0
+        except Exception:
+            pass
+        return 0
+
+    def fetch_interior_store_counts(
+        self, sido_sgg_pairs: list, delay: float = 0.2
+    ) -> pd.DataFrame:
+        """(시도, 시군구) 쌍 목록에 대해 인테리어 관련 업종 수를 집계해 DataFrame으로 반환.
+
+        Args:
+            sido_sgg_pairs: [(시도약칭, 시군구명), ...] 리스트
+        Returns:
+            DataFrame(시도, 시군구, 소상공인_인테리어업체수)
+        """
+        rows = []
+        total = len(sido_sgg_pairs)
+        for idx, (sido, sgg_name) in enumerate(sido_sgg_pairs, 1):
+            api_codes = SIDO_SGG_TO_API_CODES.get((sido, sgg_name), [])
+            if not api_codes:
+                print(f"  [{idx}/{total}] {sido} {sgg_name}: API 코드 없음 (스킵)")
+                rows.append({"시도": sido, "시군구": sgg_name, "소상공인_인테리어업체수": 0})
+                continue
+
+            total_cnt = 0
+            for sgg_cd in api_codes:
+                for upjong_cd in INTERIOR_UPJONG_CODES:
+                    cnt = self.fetch_count_by_upjong(sgg_cd, upjong_cd)
+                    total_cnt += cnt
+                    time.sleep(delay)
+
+            print(f"  [{idx}/{total}] {sido} {sgg_name}: {total_cnt}개")
+            rows.append({"시도": sido, "시군구": sgg_name, "소상공인_인테리어업체수": total_cnt})
+
+        return pd.DataFrame(rows)
 
 
 if __name__ == "__main__":

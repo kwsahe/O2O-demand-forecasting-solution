@@ -789,7 +789,8 @@
                     <th>거래건수</th>
                     <th>전월세거래건수</th>
                     <th>대수선이력건수</th>
-                    <th>인테리어업체수</th>
+                    <th>등록업체수</th>
+                    <th>상가업체수</th>
                     <th>예상시공비</th>
                     <th>시장규모</th>
                     <th>평균거래금액</th>
@@ -998,6 +999,7 @@ function renderMap(data) {
                     <div style="display:flex;justify-content:space-between;margin-bottom:3px;"><span style="color:#888;">전월세거래건수</span>${(d.전월세거래건수 || 0).toLocaleString()}건</div>
                     <div style="display:flex;justify-content:space-between;margin-bottom:3px;"><span style="color:#888;">대수선이력건수</span>${(d.대수선이력건수 || 0).toLocaleString()}건</div>
                     <div style="display:flex;justify-content:space-between;margin-bottom:3px;"><span style="color:#888;">인테리어업체수</span>${d.인테리어업체수 > 0 ? (d.인테리어업체수 || 0).toLocaleString() + '개' : '—'}</div>
+                    <div style="display:flex;justify-content:space-between;margin-bottom:3px;"><span style="color:#888;">인테리어 관련 상가수</span>${(d.소상공인_인테리어업체수 || 0).toLocaleString()}개</div>
                     <div style="display:flex;justify-content:space-between;margin-bottom:3px;"><span style="color:#888;">평균거래금액</span>${formatMoney(d.평균거래금액_만원)}원</div>
                     <div style="display:flex;justify-content:space-between;margin-bottom:3px;"><span style="color:#888;">평균면적</span>${formatArea(d.평균면적_m2)}</div>
                     <div style="display:flex;justify-content:space-between;margin-bottom:3px;"><span style="color:#888;">평균노후도</span>${d.평균노후도_년}년</div>
@@ -1212,7 +1214,8 @@ function resetTableHead() {
         <th>거래건수</th>
         <th>전월세거래건수</th>
         <th>대수선이력건수</th>
-        <th title="전국인테리어업체표준데이터 — 지자체 자율등록으로 일부 지역만 표시">인테리어업체수 ℹ</th>
+        <th title="전국인테리어업체표준데이터 — 지자체 자율등록으로 일부 지역만 표시">등록업체수 ℹ</th>
+        <th title="소상공인시장진흥공단 상가정보 — 인테리어 디자인업·건축자재·가구 소매 등 관련 업종 상가 수 (전 지역 집계)">상가업체수 ℹ</th>
         <th title="예상 시공비 하한(150만/평)~상한(220~300만/평) — 비공식 참고용">예상시공비 ℹ</th>
         <th title="거래건수 × 예상 시공비 중간값 — 비공식 시장 규모 추정">시장규모 ℹ</th>
         <th>평균거래금액</th>
@@ -1244,6 +1247,9 @@ function updateTable(data) {
             <td style="font-family:var(--mono);color:var(--text2);">${(d.대수선이력건수 || 0).toLocaleString()}건</td>
             <td style="font-family:var(--mono);color:${d.인테리어업체수 > 0 ? 'var(--text1)' : 'var(--text3)'};">
                 ${d.인테리어업체수 > 0 ? (d.인테리어업체수 || 0).toLocaleString() + '개' : '—'}
+            </td>
+            <td style="font-family:var(--mono);color:var(--text2);">
+                ${(d.소상공인_인테리어업체수 || 0).toLocaleString()}개
             </td>
             <td style="font-family:var(--mono);font-size:11px;color:var(--text2);">
                 ${d.예상시공비_하한_만원 ? Math.round(d.예상시공비_하한_만원/100) + '~' + Math.round(d.예상시공비_상한_만원/100) + '백만' : '—'}
