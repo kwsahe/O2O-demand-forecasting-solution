@@ -749,13 +749,27 @@
 <!-- ── 지역별 수요 지도 ── -->
 <div id="map-card" class="card anim-6" style="grid-column:1/-1;padding:22px;">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px;">
-        <div class="section-label" style="margin-bottom:0;flex:1;">지역별 수요 점수 지도</div>
-        <div style="display:flex;align-items:center;gap:14px;font-family:var(--mono);font-size:11px;color:var(--muted);">
+        <div style="display:flex;align-items:center;gap:12px;flex:1;">
+            <div class="section-label" style="margin-bottom:0;">지역별 수요 점수 지도</div>
+            <div style="display:flex;gap:4px;background:var(--surface2);border-radius:8px;padding:3px;">
+                <button id="mapModeGradeBtn" onclick="setMapViewMode('grade')" style="border:none;background:var(--accent);color:#fff;font-size:11px;font-weight:500;padding:5px 10px;border-radius:6px;cursor:pointer;">수요 등급</button>
+                <button id="mapModeMarketBtn" onclick="setMapViewMode('market')" style="border:none;background:transparent;color:var(--muted);font-size:11px;font-weight:500;padding:5px 10px;border-radius:6px;cursor:pointer;">시장규모·시공비</button>
+            </div>
+        </div>
+        <div id="mapLegendGrade" style="display:flex;align-items:center;gap:14px;font-family:var(--mono);font-size:11px;color:var(--muted);">
             <span style="display:flex;align-items:center;gap:5px;"><span style="width:10px;height:10px;border-radius:50%;background:#f97316;display:inline-block;"></span>S등급(60+)</span>
             <span style="display:flex;align-items:center;gap:5px;"><span style="width:10px;height:10px;border-radius:50%;background:#fbbf24;display:inline-block;"></span>A등급(30~59)</span>
             <span style="display:flex;align-items:center;gap:5px;"><span style="width:10px;height:10px;border-radius:50%;background:#38bdf8;display:inline-block;"></span>B등급(0~29)</span>
             <span style="display:flex;align-items:center;gap:5px;">🔥 거래량 상위 25% &amp; S등급 (불장)</span>
             <span style="display:flex;align-items:center;gap:5px;">📈 거래량 상위 25% &amp; A등급 (상승세)</span>
+        </div>
+        <div id="mapLegendMarket" style="display:none;align-items:center;gap:14px;font-family:var(--mono);font-size:11px;color:var(--muted);">
+            <span style="display:flex;align-items:center;gap:6px;">
+                <span style="width:60px;height:10px;border-radius:5px;display:inline-block;background:linear-gradient(90deg,#3730a3,#a21caf,#f0abfc);"></span>
+                시장규모 작음 → 큼
+            </span>
+            <span>마커 크기 = 시장규모 추정(억)</span>
+            <span>클릭 시 예상 시공비 범위 표시</span>
         </div>
     </div>
     <div id="naverMap" style="width:100%;height:480px;border-radius:10px;overflow:hidden;background:var(--surface2);"></div>
@@ -837,6 +851,42 @@ let mapMarkers = [];
 let mapInfoWindow = null;
 let mapDataCache = null;
 let lastAptData = null;
+let mapViewMode = 'grade'; // 'grade' | 'market'
+
+function setMapViewMode(mode) {
+    mapViewMode = mode;
+    const gradeBtn = document.getElementById('mapModeGradeBtn');
+    const marketBtn = document.getElementById('mapModeMarketBtn');
+    const gradeLegend = document.getElementById('mapLegendGrade');
+    const marketLegend = document.getElementById('mapLegendMarket');
+    const isMarket = mode === 'market';
+
+    gradeBtn.style.background = isMarket ? 'transparent' : 'var(--accent)';
+    gradeBtn.style.color = isMarket ? 'var(--muted)' : '#fff';
+    marketBtn.style.background = isMarket ? 'var(--accent)' : 'transparent';
+    marketBtn.style.color = isMarket ? '#fff' : 'var(--muted)';
+    gradeLegend.style.display = isMarket ? 'none' : 'flex';
+    marketLegend.style.display = isMarket ? 'flex' : 'none';
+
+    if (mapDataCache) renderMap(mapDataCache);
+}
+
+// 시장규모 추정(억) 값(0~1 정규화)에 따라 보라→마젠타→핑크 그라데이션 색상 보간
+function marketColor(t) {
+    const stops = [
+        [55, 48, 163],   // #3730a3
+        [162, 28, 175],  // #a21caf
+        [240, 171, 252], // #f0abfc
+    ];
+    const seg = Math.min(Math.floor(t * (stops.length - 1)), stops.length - 2);
+    const localT = t * (stops.length - 1) - seg;
+    const [r1, g1, b1] = stops[seg];
+    const [r2, g2, b2] = stops[seg + 1];
+    const r = Math.round(r1 + (r2 - r1) * localT);
+    const g = Math.round(g1 + (g2 - g1) * localT);
+    const b = Math.round(b1 + (b2 - b1) * localT);
+    return `rgb(${r},${g},${b})`;
+}
 
 // ── 단위 설정
 let unitMoney = 'manwon'; // 'manwon' | 'eok'
@@ -953,27 +1003,46 @@ function renderMap(data) {
     const counts = data.map(d => d.거래건수 || 0).sort((a, b) => a - b);
     const hotVolumeThreshold = counts[Math.floor(counts.length * 0.75)];
 
+    // ── 시장규모 모드용 min-max 정규화 범위
+    const marketValues = data.map(d => d.시장규모_추정_억 || 0);
+    const marketMin = Math.min(...marketValues);
+    const marketMax = Math.max(...marketValues);
+    const isMarketMode = mapViewMode === 'market';
+
     data.forEach(d => {
         const tier = scoreTier(d.인테리어_수요점수);
         const position = new naver.maps.LatLng(d.lat, d.lng);
-        const radius = 6 + (d.인테리어_수요점수 || 0) / 100 * 14; // 18~20px 범위
         const score = d.인테리어_수요점수 || 0;
         const isHotS = (d.거래건수 || 0) >= hotVolumeThreshold && score >= 60;
         const isHotA = (d.거래건수 || 0) >= hotVolumeThreshold && score >= 30 && score < 60;
-        const isHot = isHotS || isHotA;
-        const size = radius * 2;
-        const ringSize = size + 24;
-        const ringColor = isHotS ? '#f97316' : '#fbbf24';
-        const ringGlow = isHotS ? 'rgba(249,115,22,.9)' : 'rgba(251,191,36,.9)';
-        const badgeEmoji = isHotS ? '🔥' : '📈';
+        const isHot = !isMarketMode && (isHotS || isHotA);
 
-        const iconContent = isHot
-            ? `<div style="position:relative;width:${ringSize}px;height:${ringSize}px;display:flex;align-items:center;justify-content:center;">
-                   <div style="position:absolute;width:${size}px;height:${size}px;border-radius:50%;border:2px solid ${ringColor};animation:hotRing 1.6s ease-out infinite;"></div>
-                   <div style="position:absolute;width:${size}px;height:${size}px;border-radius:50%;background:${tier.color};opacity:.9;border:2px solid #fff;box-shadow:0 0 10px ${ringGlow};"></div>
-                   <div style="position:absolute;top:-6px;right:-2px;font-size:13px;">${badgeEmoji}</div>
-               </div>`
-            : `<div style="width:${size}px;height:${size}px;border-radius:50%;background:${tier.color};opacity:.8;border:2px solid rgba(255,255,255,.5);"></div>`;
+        let size, ringSize, iconContent, markerColor;
+
+        if (isMarketMode) {
+            const marketValue = d.시장규모_추정_억 || 0;
+            const marketT = marketMax > marketMin ? (marketValue - marketMin) / (marketMax - marketMin) : 0.5;
+            const radius = 6 + marketT * 14;
+            size = radius * 2;
+            ringSize = size + 4;
+            markerColor = marketColor(marketT);
+            iconContent = `<div style="width:${size}px;height:${size}px;border-radius:50%;background:${markerColor};opacity:.85;border:2px solid rgba(255,255,255,.6);"></div>`;
+        } else {
+            const radius = 6 + (d.인테리어_수요점수 || 0) / 100 * 14; // 18~20px 범위
+            size = radius * 2;
+            ringSize = size + 24;
+            const ringColor = isHotS ? '#f97316' : '#fbbf24';
+            const ringGlow = isHotS ? 'rgba(249,115,22,.9)' : 'rgba(251,191,36,.9)';
+            const badgeEmoji = isHotS ? '🔥' : '📈';
+
+            iconContent = isHot
+                ? `<div style="position:relative;width:${ringSize}px;height:${ringSize}px;display:flex;align-items:center;justify-content:center;">
+                       <div style="position:absolute;width:${size}px;height:${size}px;border-radius:50%;border:2px solid ${ringColor};animation:hotRing 1.6s ease-out infinite;"></div>
+                       <div style="position:absolute;width:${size}px;height:${size}px;border-radius:50%;background:${tier.color};opacity:.9;border:2px solid #fff;box-shadow:0 0 10px ${ringGlow};"></div>
+                       <div style="position:absolute;top:-6px;right:-2px;font-size:13px;">${badgeEmoji}</div>
+                   </div>`
+                : `<div style="width:${size}px;height:${size}px;border-radius:50%;background:${tier.color};opacity:.8;border:2px solid rgba(255,255,255,.5);"></div>`;
+        }
 
         const marker = new naver.maps.Marker({
             position,
@@ -990,9 +1059,12 @@ function renderMap(data) {
             mapInfoWindow.setContent(`
                 <div style="padding:12px 14px;font-family:'Noto Sans KR',sans-serif;font-size:12px;min-width:200px;">
                     <div style="font-weight:600;font-size:13px;margin-bottom:6px;">${d.시도} ${d.시군구}
-                        <span style="font-size:10px;font-weight:500;color:${tier.color};">${tier.label}등급</span>
-                        ${isHotS ? '<span style="font-size:10px;font-weight:600;color:#f97316;margin-left:4px;">🔥 거래 활발 (불장)</span>' : ''}
-                        ${isHotA ? '<span style="font-size:10px;font-weight:600;color:#fbbf24;margin-left:4px;">📈 거래 활발 (상승세)</span>' : ''}
+                        ${isMarketMode
+                            ? `<span style="font-size:10px;font-weight:600;color:#f0abfc;">시장규모 ${d.시장규모_추정_억 ? d.시장규모_추정_억.toLocaleString() + '억' : '—'}</span>`
+                            : `<span style="font-size:10px;font-weight:500;color:${tier.color};">${tier.label}등급</span>
+                               ${isHotS ? '<span style="font-size:10px;font-weight:600;color:#f97316;margin-left:4px;">🔥 거래 활발 (불장)</span>' : ''}
+                               ${isHotA ? '<span style="font-size:10px;font-weight:600;color:#fbbf24;margin-left:4px;">📈 거래 활발 (상승세)</span>' : ''}`
+                        }
                     </div>
                     <div style="display:flex;justify-content:space-between;margin-bottom:3px;"><span style="color:#888;">인테리어 수요 점수</span><strong>${d.인테리어_수요점수}점</strong></div>
                     <div style="display:flex;justify-content:space-between;margin-bottom:3px;"><span style="color:#888;">거래건수</span>${(d.거래건수 || 0).toLocaleString()}건</div>

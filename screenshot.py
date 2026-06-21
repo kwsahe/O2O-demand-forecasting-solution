@@ -4,7 +4,7 @@ import time
 import os
 from playwright.sync_api import sync_playwright
 
-BASE_URL = "http://localhost:5000"
+BASE_URL = "http://localhost:8300"
 OUT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "screenshots")
 os.makedirs(OUT_DIR, exist_ok=True)
 
@@ -21,6 +21,12 @@ def shot(page, name, clip=None, full_page=False):
 def click_btn(page, btn_id):
     """Click a button by ID via JS to avoid encoding issues in selectors."""
     page.evaluate(f"document.getElementById('{btn_id}').click()")
+
+
+def scroll_top_aligned(page, element_id):
+    """엘리먼트 상단을 뷰포트 상단에 맞춰 스크롤 (scroll_into_view_if_needed는 최소 스크롤이라
+    엘리먼트가 뷰포트보다 크면 top이 화면 밖으로 나가 clip 좌표가 음수가 되는 문제 방지)."""
+    page.evaluate(f"document.getElementById('{element_id}').scrollIntoView({{block: 'start'}})")
 
 
 def take_screenshots():
@@ -52,6 +58,8 @@ def take_screenshots():
         })
 
         # 3. Search & filter row
+        scroll_top_aligned(page, "search-filter-row")
+        time.sleep(0.4)
         sf_box = page.locator("#search-filter-row").bounding_box()
         shot(page, "03_search_filter.png", clip={
             "x": 0,
@@ -61,6 +69,8 @@ def take_screenshots():
         })
 
         # 4. Charts (bar + doughnut)
+        scroll_top_aligned(page, "chart-bar-card")
+        time.sleep(0.4)
         bar_box = page.locator("#chart-bar-card").bounding_box()
         pie_box = page.locator("#chart-pie-card").bounding_box()
         top = min(bar_box["y"], pie_box["y"]) - 8
@@ -72,18 +82,13 @@ def take_screenshots():
         })
 
         # 5. Ranking table
-        page.locator("#rank-table-card").scroll_into_view_if_needed()
+        scroll_top_aligned(page, "rank-table-card")
         time.sleep(0.4)
         tbl_box = page.locator("#rank-table-card").bounding_box()
         shot(page, "05_ranking_table.png", clip={
             "x": 0, "y": int(tbl_box["y"] - 4),
             "width": 1440, "height": min(860, int(tbl_box["height"] + 16)),
         })
-
-        # Scroll search into view
-        page.locator("#search-filter-row").scroll_into_view_if_needed()
-        time.sleep(0.3)
-        sf_box2 = page.locator("#search-filter-row").bounding_box()
 
         # 6 & 7: Use a tall viewport so filter + table are both visible
         page.set_viewport_size({"width": 1440, "height": 2000})
@@ -131,7 +136,7 @@ def take_screenshots():
         # 9. Score explanation section
         click_btn(page, "btn-전체")   # 전체
         page.wait_for_timeout(300)
-        page.locator("#score-explain-card").scroll_into_view_if_needed()
+        scroll_top_aligned(page, "score-explain-card")
         time.sleep(0.6)
         explain_box = page.locator("#score-explain-card").bounding_box()
         shot(page, "09_score_explanation.png", clip={
@@ -139,6 +144,24 @@ def take_screenshots():
             "y": max(0, int(explain_box["y"] - 10)),
             "width": 1440,
             "height": min(860, int(explain_box["height"] + 20)),
+        })
+
+        # 10. Map - 수요 등급 모드 (default)
+        scroll_top_aligned(page, "map-card")
+        page.wait_for_timeout(2500)  # 네이버 지도 타일 로딩 대기
+        map_box = page.locator("#map-card").bounding_box()
+        shot(page, "10_map_grade_mode.png", clip={
+            "x": 0, "y": int(map_box["y"] - 8),
+            "width": 1440, "height": int(map_box["height"] + 16),
+        })
+
+        # 11. Map - 시장규모·시공비 모드
+        click_btn(page, "mapModeMarketBtn")
+        page.wait_for_timeout(1200)
+        map_box2 = page.locator("#map-card").bounding_box()
+        shot(page, "11_map_market_mode.png", clip={
+            "x": 0, "y": int(map_box2["y"] - 8),
+            "width": 1440, "height": int(map_box2["height"] + 16),
         })
 
         browser.close()
