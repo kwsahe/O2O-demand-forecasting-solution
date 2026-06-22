@@ -80,9 +80,10 @@
         }
         .kpi-label {
             font-family: var(--mono);
-            font-size: 10px;
-            letter-spacing: .14em;
-            color: var(--muted);
+            font-size: 12px;
+            font-weight: 500;
+            letter-spacing: .1em;
+            color: var(--text2);
             text-transform: uppercase;
             margin-bottom: 10px;
         }
@@ -138,9 +139,10 @@
         /* ── 섹션 레이블 */
         .section-label {
             font-family: var(--mono);
-            font-size: 10px;
-            letter-spacing: .14em;
-            color: var(--muted);
+            font-size: 13px;
+            font-weight: 500;
+            letter-spacing: .08em;
+            color: var(--text2);
             text-transform: uppercase;
             margin-bottom: 16px;
             display: flex;
@@ -273,6 +275,41 @@
     </div>
 </div>
 
+<!-- ── 인테리어 업체/시장 통계 KPI 행 ── -->
+<div style="grid-column:1/-1;" class="anim-3">
+    <div class="section-label">인테리어 업체·시장 통계</div>
+</div>
+<div id="interior-kpi-row" style="grid-column:1/-1;display:grid;grid-template-columns:repeat(4,1fr);gap:16px;">
+    <div class="card kpi-card anim-3">
+        <div class="kpi-icon">🏢</div>
+        <div class="kpi-label">등록 인테리어업체수 합계</div>
+        <div class="kpi-value" id="kpi5">—</div>
+        <div class="kpi-sub" id="kpi5Sub">전국인테리어업체표준데이터</div>
+        <div class="kpi-bar" style="background:var(--purple);"></div>
+    </div>
+    <div class="card kpi-card anim-4">
+        <div class="kpi-icon">🏪</div>
+        <div class="kpi-label">인테리어 관련 상가수 합계</div>
+        <div class="kpi-value" id="kpi6">—</div>
+        <div class="kpi-sub" id="kpi6Sub">소상공인 상가정보 (전 지역 집계)</div>
+        <div class="kpi-bar" style="background:var(--blue);"></div>
+    </div>
+    <div class="card kpi-card anim-4">
+        <div class="kpi-icon">🛠️</div>
+        <div class="kpi-label">평균 예상 시공비</div>
+        <div class="kpi-value" id="kpi7" style="font-size:22px;">—</div>
+        <div class="kpi-sub">시군구 평균 면적 기준 추정 (만원)</div>
+        <div class="kpi-bar" style="background:var(--red);"></div>
+    </div>
+    <div class="card kpi-card anim-5">
+        <div class="kpi-icon">📈</div>
+        <div class="kpi-label">전국 시장규모 추정 합계</div>
+        <div class="kpi-value" id="kpi8">—</div>
+        <div class="kpi-sub" id="kpi8Sub">거래건수 × 예상 시공비 추정</div>
+        <div class="kpi-bar" style="background:var(--accent2);"></div>
+    </div>
+</div>
+
 <!-- ── 시도별 요약 차트 ── -->
 <div id="chart-sido-card" class="card anim-4" style="grid-column:1/-1;padding:22px;">
     <div class="section-label">시도별 평균 / 최고 인테리어 수요 점수</div>
@@ -341,6 +378,10 @@
                     <th>평균면적</th>
                     <th>신규입주</th>
                     <th>입주단지</th>
+                    <th>등록업체수</th>
+                    <th>상가업체수</th>
+                    <th>예상시공비</th>
+                    <th>시장규모</th>
                     <th style="width:160px;">수요 점수</th>
                     <th style="width:72px;">등급</th>
                 </tr>
@@ -434,6 +475,29 @@ function updateKPI(data, sidoData) {
 
     const avgPrice = data.reduce((s, d) => s + (d.평균거래금액_만원 || 0), 0) / data.length;
     document.getElementById('kpi4').textContent = isNaN(avgPrice) ? '—' : Math.round(avgPrice).toLocaleString() + '만';
+
+    // 인테리어 업체/시장 통계
+    const totalRegisteredCompanies = data.reduce((s, d) => s + (d.인테리어업체수 || 0), 0);
+    const coveredCount = data.filter(d => (d.인테리어업체수 || 0) > 0).length;
+    document.getElementById('kpi5').textContent = totalRegisteredCompanies.toLocaleString() + '개';
+    document.getElementById('kpi5Sub').textContent = `${coveredCount}/${data.length}개 시군구에만 데이터 있음`;
+
+    const totalSbizStores = data.reduce((s, d) => s + (d.소상공인_인테리어업체수 || 0), 0);
+    document.getElementById('kpi6').textContent = totalSbizStores.toLocaleString() + '개';
+    document.getElementById('kpi6Sub').textContent = `전체 ${data.length}개 시군구 커버`;
+
+    const validCost = data.filter(d => d.예상시공비_하한_만원 && d.예상시공비_상한_만원);
+    const avgLow = validCost.reduce((s, d) => s + d.예상시공비_하한_만원, 0) / validCost.length;
+    const avgHigh = validCost.reduce((s, d) => s + d.예상시공비_상한_만원, 0) / validCost.length;
+    document.getElementById('kpi7').textContent = (validCost.length === 0) ? '—' :
+        `${Math.round(avgLow).toLocaleString()}~${Math.round(avgHigh).toLocaleString()}만`;
+
+    const totalMarketSize = data.reduce((s, d) => s + (d.시장규모_추정_억 || 0), 0);
+    document.getElementById('kpi8').textContent = totalMarketSize.toLocaleString() + '억';
+    const topMarket = [...data].sort((a, b) => (b.시장규모_추정_억 || 0) - (a.시장규모_추정_억 || 0))[0];
+    document.getElementById('kpi8Sub').textContent = topMarket
+        ? `1위: ${regionLabel(topMarket)} (${(topMarket.시장규모_추정_억 || 0).toLocaleString()}억)`
+        : '거래건수 × 예상 시공비 추정';
 }
 
 // ── 시도별 평균/최고 수요점수
@@ -664,6 +728,10 @@ function updateFullTable(data) {
             <td style="font-family:var(--mono);color:var(--text2);">${d.평균면적_m2}㎡</td>
             <td style="font-family:var(--mono);color:var(--text2);">${(d.신규입주_세대수 || 0).toLocaleString()}세대</td>
             <td style="font-family:var(--mono);color:var(--text2);">${(d.입주단지수 || 0).toLocaleString()}개</td>
+            <td style="font-family:var(--mono);color:${d.인테리어업체수 > 0 ? 'var(--text)' : 'var(--muted)'};">${d.인테리어업체수 > 0 ? (d.인테리어업체수 || 0).toLocaleString() + '개' : '—'}</td>
+            <td style="font-family:var(--mono);color:var(--text2);">${(d.소상공인_인테리어업체수 || 0).toLocaleString()}개</td>
+            <td style="font-family:var(--mono);font-size:11px;color:var(--text2);">${d.예상시공비_하한_만원 ? Math.round(d.예상시공비_하한_만원/100) + '~' + Math.round(d.예상시공비_상한_만원/100) + '백만' : '—'}</td>
+            <td style="font-family:var(--mono);color:${d.시장규모_추정_억 >= 100 ? 'var(--accent)' : 'var(--text2)'};">${d.시장규모_추정_억 ? d.시장규모_추정_억.toLocaleString() + '억' : '—'}</td>
             <td>
                 <div style="display:flex;align-items:center;gap:8px;">
                     <div style="flex:1;height:5px;background:var(--surface2);border-radius:3px;overflow:hidden;">

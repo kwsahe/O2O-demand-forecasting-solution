@@ -88,9 +88,10 @@
         /* ── 섹션 레이블 */
         .section-label {
             font-family: var(--mono);
-            font-size: 10px;
-            letter-spacing: .14em;
-            color: var(--muted);
+            font-size: 13px;
+            font-weight: 500;
+            letter-spacing: .08em;
+            color: var(--text2);
             text-transform: uppercase;
             margin-bottom: 16px;
             display: flex;
@@ -102,6 +103,18 @@
             flex: 1;
             height: 1px;
             background: var(--border);
+        }
+
+        /* ── 카드 메인 타이틀 */
+        .hero-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--text);
+            letter-spacing: -.01em;
+            margin-bottom: 18px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
         }
 
         /* ── 애니메이션 */
@@ -282,7 +295,7 @@
 
 <!-- ── 소개 ── -->
 <div id="intro-card" class="card anim-0" style="grid-column:1/-1;padding:28px 30px;">
-    <div class="section-label">🔑 사회초년생을 위한 첫 집 구매 가이드</div>
+    <div class="hero-title">🔑 사회초년생을 위한 첫 집 구매 가이드</div>
     <div style="background:var(--surface2);border-left:3px solid var(--accent);border-radius:0 10px 10px 0;padding:16px 20px;font-size:14px;line-height:1.8;color:var(--text);">
         처음 집을 구매할 때는 <strong style="color:var(--accent);">예산 계획부터 등기 이전까지</strong> 낯선 절차와 용어가 많아 막막할 수 있어요.
         이 페이지는 <strong>주택 매수의 전체 흐름을 8단계</strong>로 정리하고, <strong style="color:var(--accent2);">자주 헷갈리는 용어</strong>를 풀어서 설명합니다.
