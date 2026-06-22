@@ -358,17 +358,6 @@ def build_ranking_summary(df: pd.DataFrame, top_n: int = 10) -> str:
     return "\n".join(lines)
 
 
-def get_recent_chat_history(limit: int = 3, chat_type: str = "demand"):
-    """최근 대화 기록을 가져와 멀티턴 대화(이어지는 질문)를 지원한다."""
-    conn = sqlite3.connect(CHAT_DB_PATH)
-    rows = conn.execute(
-        "SELECT user_message, bot_answer FROM chat_logs WHERE status = 'ok' AND chat_type = ? ORDER BY id DESC LIMIT ?",
-        (chat_type, limit),
-    ).fetchall()
-    conn.close()
-    return list(reversed(rows))
-
-
 @app.route("/api/chat", methods=["POST"])
 def chat():
     message = ""
@@ -398,7 +387,10 @@ def chat():
             "사용자가 특정 아파트 단지명이나 주소(법정동)를 언급하면, 아래 [질문과 관련된 단지 최근 실거래 내역]을 참고해 "
             "해당 단지의 최근 거래금액, 건축년도, 전용면적 등 정보를 알려주세요. "
             "필요하면 예시를 들어 설명하고, 적절히 이모지를 곁들여도 좋습니다. "
-            "데이터에 없는 내용은 추측하지 말고 모른다고 솔직하게 답하세요.\n\n"
+            "데이터에 없는 내용은 추측하지 말고 모른다고 솔직하게 답하세요. "
+            "'~것으로 보입니다', '~인 것 같습니다', '~로 추정됩니다'(예상시공비/시장규모처럼 원래 추정치인 "
+            "컬럼은 예외) 같은 모호한 말투는 쓰지 마세요. 데이터에 있는 값은 단정적으로("
+            "'~입니다', '~건입니다') 말하고, 데이터에 없으면 '~데이터가 없습니다'라고 명확히 말하세요.\n\n"
             "[매우 중요 — 표 혼동 금지 규칙]\n"
             "이 시스템에는 두 종류의 표가 있습니다. 절대 서로 혼동하지 마세요.\n"
             "  1) [시군구별 인테리어 수요 점수]: '시군구'(예: 서울특별시 서초구) 단위의 개별 데이터입니다. "
@@ -436,12 +428,21 @@ def chat():
             "  - S등급 (60~100점): 최우선 타겟, 마케팅 예산 집중\n"
             "  - A등급 (30~59점): 중간 타겟, 선별적 마케팅\n"
             "  - B등급 (0~29점): 관찰 지역, 투자 보류\n\n"
+            "[매우 중요 — 컬럼명을 글자 그대로 정확히 읽으세요]\n"
+            "각 컬럼은 이름이 비슷해도 서로 다른 값입니다. 절대 다른 컬럼의 값을 가져와 쓰지 마세요.\n"
+            "  - '거래건수'와 '전월세거래건수'는 완전히 다른 컬럼입니다 (매매 거래 수 vs 전월세 거래 수). "
+            "같은 행이라도 두 값이 다를 수 있으니 질문에 맞는 컬럼만 정확히 골라 답하세요.\n"
+            "  - 컬럼명에 단위가 적혀 있으면(예: '_만원', '_년', '_m2') 그 단위가 곧 데이터의 단위입니다. "
+            "절대 임의로 100을 곱하거나 나누는 등 추가 환산을 하지 마세요. "
+            "예: '평균거래금액_만원' 값이 83920.1이면 그대로 '83,920.1만원(약 8억 3,920만원)'이라고 답하세요. "
+            "'84,000원'이나 '839.2만원'처럼 자체적으로 단위를 바꿔 계산하면 안 됩니다.\n\n"
             "[데이터 컬럼 설명 — 시군구별 표]\n"
             "- 인테리어_수요점수: 위 산출 방식으로 계산된 0~100점 값 (해당 시군구 자체의 점수)\n"
-            "- 거래건수: 해당 시군구의 노후도 15~20년(Old_Apartment) 세그먼트 거래 건수\n"
-            "- 평균거래금액_만원 / 평균노후도_년 / 평균면적_m2: 해당 시군구 Old_Apartment 평균값\n"
+            "- 거래건수: 해당 시군구의 노후도 15~20년(Old_Apartment) 세그먼트 '매매' 거래 건수\n"
+            "- 평균거래금액_만원: 해당 시군구 Old_Apartment 평균 매매가, 단위는 '만원'(예: 83920.1 → 83,920.1만원)\n"
+            "- 평균노후도_년 / 평균면적_m2: 해당 시군구 Old_Apartment 평균값\n"
             "- 신규입주_세대수 / 입주단지수: 해당 시군구의 입주예정 신규 세대수 / 단지 수\n"
-            "- 전월세거래건수: 해당 시군구의 노후도 15~20년(Old_Apartment) 세그먼트 전월세 거래 건수\n"
+            "- 전월세거래건수: 해당 시군구의 노후도 15~20년(Old_Apartment) 세그먼트 '전월세' 거래 건수 (거래건수와 다른 값)\n"
             "- 대수선이력건수: 해당 시군구의 건축물대장 대수선 허가 이력 건수 (전체 건축물 대상)\n"
             "- 인테리어업체수: 전국인테리어업체표준데이터(공공데이터) 기준 등록 인테리어 업체 수. "
             "지자체 자율등록 방식이라 일부 지역만 값이 있고 대부분 0으로 나타남 — 0이어도 '업체가 없다'가 아니라 "
@@ -476,12 +477,11 @@ def chat():
             f"{find_apartment_context(message)}"
         )
 
-        messages = [{"role": "system", "content": system_prompt}]
-        for past_user, past_answer in get_recent_chat_history():
-            messages.append({"role": "user", "content": past_user})
-            messages.append({"role": "assistant", "content": past_answer})
-        messages.append({"role": "system", "content": data_context})
-        messages.append({"role": "user", "content": message})
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "system", "content": data_context},
+            {"role": "user", "content": message},
+        ]
 
         res = requests.post(
             f"{OLLAMA_HOST}/api/chat",
@@ -556,11 +556,10 @@ def guide_chat():
             "반드시 한국어로만 답변하세요. 다른 언어(영어, 중국어, 일본어 등)는 절대 사용하지 마세요."
         )
 
-        messages = [{"role": "system", "content": system_prompt}]
-        for past_user, past_answer in get_recent_chat_history(chat_type="guide"):
-            messages.append({"role": "user", "content": past_user})
-            messages.append({"role": "assistant", "content": past_answer})
-        messages.append({"role": "user", "content": message})
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": message},
+        ]
 
         res = requests.post(
             f"{OLLAMA_HOST}/api/chat",

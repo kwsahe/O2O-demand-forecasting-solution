@@ -91,19 +91,19 @@ function baseSvg(width, height, title, subtitle, content) {
 
 function architectureSvg() {
   const content = `
-    ${box({ x: 70, y: 170, w: 310, h: 170, title: "데이터 소스", body: ["국토교통부 실거래가 API", "한국부동산원 입주예정 CSV"], fill: "#0f172a", accent: "#f97316" })}
-    ${box({ x: 500, y: 150, w: 320, h: 210, title: "수집 계층", body: ["src/collector.py", "requests + XML 파싱", "최근 N개월 자동 수집", "컬럼 정규화"], fill: "#111827", accent: "#38bdf8" })}
-    ${box({ x: 940, y: 150, w: 360, h: 210, title: "분석 파이프라인", body: ["src/pipeline.py", "pandas 전처리/집계", "연식 세그먼트 분류", "Min-Max + 가중합 점수"], fill: "#111827", accent: "#34d399" })}
-    ${box({ x: 70, y: 460, w: 310, h: 170, title: "저장 데이터", body: ["raw_api_collected.csv", "수요점수 결과 CSV", "시도별 요약 CSV"], fill: "#0f172a", accent: "#a78bfa" })}
-    ${box({ x: 500, y: 440, w: 320, h: 210, title: "백엔드 API", body: ["app.py / Flask", "/api/demand", "/api/collect", "/api/search"], fill: "#111827", accent: "#fbbf24" })}
-    ${box({ x: 940, y: 440, w: 360, h: 210, title: "대시보드", body: ["templates/index.html", "Chart.js 시각화", "KPI / 랭킹 / 검색", "지역 필터"], fill: "#111827", accent: "#e879f9" })}
-    ${arrow(380, 255, 500, 255)}
-    ${arrow(820, 255, 940, 255)}
-    ${downArrow(225, 340, 460)}
-    ${arrow(380, 545, 500, 545)}
-    ${arrow(820, 545, 940, 545)}
-    ${downArrow(660, 360, 440)}
-    ${arrow(1120, 360, 1120, 440)}
+    ${box({ x: 64, y: 150, w: 360, h: 210, title: "데이터 소스", body: ["국토부 실거래가 (매매/전월세)", "한국부동산원 입주예정 CSV", "대수선 이력 & 인테리어 업체"], fill: "#0f172a", accent: "#f97316" })}
+    ${box({ x: 504, y: 150, w: 360, h: 210, title: "수집 계층", body: ["src/collector.py", "collect_*.py 수집 스크립트", "requests + XML/JSON API", "자동 수집 및 정규화"], fill: "#111827", accent: "#38bdf8" })}
+    ${box({ x: 944, y: 150, w: 360, h: 210, title: "분석 파이프라인", body: ["src/pipeline.py", "pandas 전처리 및 정제", "아파트 연식 세그먼트 분류", "7개 지표 Min-Max 가중합"], fill: "#111827", accent: "#34d399" })}
+    ${box({ x: 64, y: 440, w: 360, h: 210, title: "저장 데이터", body: ["raw_api_collected_all.csv", "raw_renovation/interior.csv", "인테리어_수요점수_결과.csv", "sigungu_coordinates.csv"], fill: "#0f172a", accent: "#a78bfa" })}
+    ${box({ x: 504, y: 440, w: 360, h: 210, title: "백엔드 API", body: ["app.py / Flask", "/api/demand, /api/map-data", "/api/collect, /api/search", "/api/chat (Ollama 챗봇)"], fill: "#111827", accent: "#fbbf24" })}
+    ${box({ x: 944, y: 440, w: 360, h: 210, title: "대시보드", body: ["index / analytics / guide.html", "Naver Maps API (지도 마커)", "Chart.js 시각화 & KPI", "챗봇 UI & 구매 가이드"], fill: "#111827", accent: "#e879f9" })}
+    ${arrow(424, 255, 504, 255)}
+    ${arrow(864, 255, 944, 255)}
+    ${downArrow(244, 360, 440)}
+    ${arrow(424, 545, 504, 545)}
+    ${arrow(864, 545, 944, 545)}
+    ${downArrow(684, 360, 440)}
+    ${arrow(1124, 360, 1124, 440)}
   `;
   return baseSvg(
     1368,
@@ -116,14 +116,14 @@ function architectureSvg() {
 
 function flowSvg() {
   const steps = [
-    ["1", "데이터 수집", "실거래가 API와 입주예정 CSV를 확보"],
-    ["2", "정제/표준화", "금액·면적·건축연도 숫자화, 지역명 정규화"],
-    ["3", "피처 엔지니어링", "연식 계산, 아파트 세그먼트 분류"],
-    ["4", "지역 집계", "시도/시군구별 거래건수, 평균금액, 평균연식 집계"],
-    ["5", "공급 데이터 결합", "신규 입주 물량을 지역 단위로 LEFT JOIN"],
-    ["6", "수요 점수화", "5개 지표 Min-Max 정규화 후 가중합"],
-    ["7", "등급/랭킹", "S/A/B 등급과 TOP 지역 랭킹 생성"],
-    ["8", "대시보드 제공", "KPI, 차트, 검색, 지역 필터로 시각화"],
+    ["1", "데이터 수집", "실거래가 API, 입주예정, 대수선, 업체 수집"],
+    ["2", "정제/표준화", "금액·면적·연식 수치화, 행정구역 정규화"],
+    ["3", "피처 엔지니어링", "노후도 계산 및 아파트 4대 세그먼트 분류"],
+    ["4", "지역 집계", "시군구별 거래건수, 평균노후도, 업체수 등 집계"],
+    ["5", "공급 데이터 결합", "신규 입주예정 물량을 시군구 단위 LEFT JOIN"],
+    ["6", "수요 점수화", "7개 핵심 지표 Min-Max 정규화 및 가중합"],
+    ["7", "등급/랭킹", "수요 점수 기반 S/A/B 등급 부여 및 결과 저장"],
+    ["8", "대시보드 제공", "지도 마커, 차트, 검색 필터, LLM 챗봇 연동"],
   ];
 
   const boxes = steps.map(([num, title, body], idx) => {
@@ -155,9 +155,9 @@ function flowSvg() {
 
   const formula = `
     <g>
-      <rect x="270" y="660" width="828" height="52" rx="14" fill="#0f172a" stroke="#25364d" stroke-width="2"/>
-      <text x="684" y="694" font-size="20" font-weight="800" fill="#e2e8f0" text-anchor="middle">
-        수요점수 = 거래건수 30% + 거래금액 25% + 연식 20% + 면적 15% + 신규입주 10%
+      <rect x="184" y="660" width="1000" height="52" rx="14" fill="#0f172a" stroke="#25364d" stroke-width="2"/>
+      <text x="684" y="694" font-size="19" font-weight="800" fill="#e2e8f0" text-anchor="middle">
+        수요점수 = 거래건수 20% + 전월세 20% + 거래금액 15% + 노후도 15% + 면적 10% + 신규입주 10% + 대수선 10%
       </text>
     </g>
   `;

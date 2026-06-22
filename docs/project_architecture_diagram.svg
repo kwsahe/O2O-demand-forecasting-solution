@@ -21,94 +21,96 @@
       
     
     <g>
-      <rect x="70" y="170" width="310" height="170" rx="18" fill="#0f172a" stroke="#334155" stroke-width="2"/>
-      <rect x="70" y="170" width="8" height="170" rx="4" fill="#f97316"/>
-      <text x="225" y="212" font-size="24" font-weight="800" fill="#f8fafc" text-anchor="middle">데이터 소스</text>
-      <text x="104" y="254" font-size="19" font-weight="500" fill="#cbd5e1">국토교통부 실거래가 API</text>
-<text x="104" y="282" font-size="19" font-weight="500" fill="#cbd5e1">한국부동산원 입주예정 CSV</text>
+      <rect x="64" y="150" width="360" height="210" rx="18" fill="#0f172a" stroke="#334155" stroke-width="2"/>
+      <rect x="64" y="150" width="8" height="210" rx="4" fill="#f97316"/>
+      <text x="244" y="192" font-size="24" font-weight="800" fill="#f8fafc" text-anchor="middle">데이터 소스</text>
+      <text x="98" y="234" font-size="19" font-weight="500" fill="#cbd5e1">국토부 실거래가 (매매/전월세)</text>
+<text x="98" y="262" font-size="19" font-weight="500" fill="#cbd5e1">한국부동산원 입주예정 CSV</text>
+<text x="98" y="290" font-size="19" font-weight="500" fill="#cbd5e1">대수선 이력 &amp; 인테리어 업체</text>
     </g>
   
     
     <g>
-      <rect x="500" y="150" width="320" height="210" rx="18" fill="#111827" stroke="#334155" stroke-width="2"/>
-      <rect x="500" y="150" width="8" height="210" rx="4" fill="#38bdf8"/>
-      <text x="660" y="192" font-size="24" font-weight="800" fill="#f8fafc" text-anchor="middle">수집 계층</text>
-      <text x="534" y="234" font-size="19" font-weight="500" fill="#cbd5e1">src/collector.py</text>
-<text x="534" y="262" font-size="19" font-weight="500" fill="#cbd5e1">requests + XML 파싱</text>
-<text x="534" y="290" font-size="19" font-weight="500" fill="#cbd5e1">최근 N개월 자동 수집</text>
-<text x="534" y="318" font-size="19" font-weight="500" fill="#cbd5e1">컬럼 정규화</text>
+      <rect x="504" y="150" width="360" height="210" rx="18" fill="#111827" stroke="#334155" stroke-width="2"/>
+      <rect x="504" y="150" width="8" height="210" rx="4" fill="#38bdf8"/>
+      <text x="684" y="192" font-size="24" font-weight="800" fill="#f8fafc" text-anchor="middle">수집 계층</text>
+      <text x="538" y="234" font-size="19" font-weight="500" fill="#cbd5e1">src/collector.py</text>
+<text x="538" y="262" font-size="19" font-weight="500" fill="#cbd5e1">collect_*.py 수집 스크립트</text>
+<text x="538" y="290" font-size="19" font-weight="500" fill="#cbd5e1">requests + XML/JSON API</text>
+<text x="538" y="318" font-size="19" font-weight="500" fill="#cbd5e1">자동 수집 및 정규화</text>
     </g>
   
     
     <g>
-      <rect x="940" y="150" width="360" height="210" rx="18" fill="#111827" stroke="#334155" stroke-width="2"/>
-      <rect x="940" y="150" width="8" height="210" rx="4" fill="#34d399"/>
-      <text x="1120" y="192" font-size="24" font-weight="800" fill="#f8fafc" text-anchor="middle">분석 파이프라인</text>
-      <text x="974" y="234" font-size="19" font-weight="500" fill="#cbd5e1">src/pipeline.py</text>
-<text x="974" y="262" font-size="19" font-weight="500" fill="#cbd5e1">pandas 전처리/집계</text>
-<text x="974" y="290" font-size="19" font-weight="500" fill="#cbd5e1">연식 세그먼트 분류</text>
-<text x="974" y="318" font-size="19" font-weight="500" fill="#cbd5e1">Min-Max + 가중합 점수</text>
+      <rect x="944" y="150" width="360" height="210" rx="18" fill="#111827" stroke="#334155" stroke-width="2"/>
+      <rect x="944" y="150" width="8" height="210" rx="4" fill="#34d399"/>
+      <text x="1124" y="192" font-size="24" font-weight="800" fill="#f8fafc" text-anchor="middle">분석 파이프라인</text>
+      <text x="978" y="234" font-size="19" font-weight="500" fill="#cbd5e1">src/pipeline.py</text>
+<text x="978" y="262" font-size="19" font-weight="500" fill="#cbd5e1">pandas 전처리 및 정제</text>
+<text x="978" y="290" font-size="19" font-weight="500" fill="#cbd5e1">아파트 연식 세그먼트 분류</text>
+<text x="978" y="318" font-size="19" font-weight="500" fill="#cbd5e1">7개 지표 Min-Max 가중합</text>
     </g>
   
     
     <g>
-      <rect x="70" y="460" width="310" height="170" rx="18" fill="#0f172a" stroke="#334155" stroke-width="2"/>
-      <rect x="70" y="460" width="8" height="170" rx="4" fill="#a78bfa"/>
-      <text x="225" y="502" font-size="24" font-weight="800" fill="#f8fafc" text-anchor="middle">저장 데이터</text>
-      <text x="104" y="544" font-size="19" font-weight="500" fill="#cbd5e1">raw_api_collected.csv</text>
-<text x="104" y="572" font-size="19" font-weight="500" fill="#cbd5e1">수요점수 결과 CSV</text>
-<text x="104" y="600" font-size="19" font-weight="500" fill="#cbd5e1">시도별 요약 CSV</text>
+      <rect x="64" y="440" width="360" height="210" rx="18" fill="#0f172a" stroke="#334155" stroke-width="2"/>
+      <rect x="64" y="440" width="8" height="210" rx="4" fill="#a78bfa"/>
+      <text x="244" y="482" font-size="24" font-weight="800" fill="#f8fafc" text-anchor="middle">저장 데이터</text>
+      <text x="98" y="524" font-size="19" font-weight="500" fill="#cbd5e1">raw_api_collected_all.csv</text>
+<text x="98" y="552" font-size="19" font-weight="500" fill="#cbd5e1">raw_renovation/interior.csv</text>
+<text x="98" y="580" font-size="19" font-weight="500" fill="#cbd5e1">인테리어_수요점수_결과.csv</text>
+<text x="98" y="608" font-size="19" font-weight="500" fill="#cbd5e1">sigungu_coordinates.csv</text>
     </g>
   
     
     <g>
-      <rect x="500" y="440" width="320" height="210" rx="18" fill="#111827" stroke="#334155" stroke-width="2"/>
-      <rect x="500" y="440" width="8" height="210" rx="4" fill="#fbbf24"/>
-      <text x="660" y="482" font-size="24" font-weight="800" fill="#f8fafc" text-anchor="middle">백엔드 API</text>
-      <text x="534" y="524" font-size="19" font-weight="500" fill="#cbd5e1">app.py / Flask</text>
-<text x="534" y="552" font-size="19" font-weight="500" fill="#cbd5e1">/api/demand</text>
-<text x="534" y="580" font-size="19" font-weight="500" fill="#cbd5e1">/api/collect</text>
-<text x="534" y="608" font-size="19" font-weight="500" fill="#cbd5e1">/api/search</text>
+      <rect x="504" y="440" width="360" height="210" rx="18" fill="#111827" stroke="#334155" stroke-width="2"/>
+      <rect x="504" y="440" width="8" height="210" rx="4" fill="#fbbf24"/>
+      <text x="684" y="482" font-size="24" font-weight="800" fill="#f8fafc" text-anchor="middle">백엔드 API</text>
+      <text x="538" y="524" font-size="19" font-weight="500" fill="#cbd5e1">app.py / Flask</text>
+<text x="538" y="552" font-size="19" font-weight="500" fill="#cbd5e1">/api/demand, /api/map-data</text>
+<text x="538" y="580" font-size="19" font-weight="500" fill="#cbd5e1">/api/collect, /api/search</text>
+<text x="538" y="608" font-size="19" font-weight="500" fill="#cbd5e1">/api/chat (Ollama 챗봇)</text>
     </g>
   
     
     <g>
-      <rect x="940" y="440" width="360" height="210" rx="18" fill="#111827" stroke="#334155" stroke-width="2"/>
-      <rect x="940" y="440" width="8" height="210" rx="4" fill="#e879f9"/>
-      <text x="1120" y="482" font-size="24" font-weight="800" fill="#f8fafc" text-anchor="middle">대시보드</text>
-      <text x="974" y="524" font-size="19" font-weight="500" fill="#cbd5e1">templates/index.html</text>
-<text x="974" y="552" font-size="19" font-weight="500" fill="#cbd5e1">Chart.js 시각화</text>
-<text x="974" y="580" font-size="19" font-weight="500" fill="#cbd5e1">KPI / 랭킹 / 검색</text>
-<text x="974" y="608" font-size="19" font-weight="500" fill="#cbd5e1">지역 필터</text>
+      <rect x="944" y="440" width="360" height="210" rx="18" fill="#111827" stroke="#334155" stroke-width="2"/>
+      <rect x="944" y="440" width="8" height="210" rx="4" fill="#e879f9"/>
+      <text x="1124" y="482" font-size="24" font-weight="800" fill="#f8fafc" text-anchor="middle">대시보드</text>
+      <text x="978" y="524" font-size="19" font-weight="500" fill="#cbd5e1">index / analytics / guide.html</text>
+<text x="978" y="552" font-size="19" font-weight="500" fill="#cbd5e1">Naver Maps API (지도 마커)</text>
+<text x="978" y="580" font-size="19" font-weight="500" fill="#cbd5e1">Chart.js 시각화 &amp; KPI</text>
+<text x="978" y="608" font-size="19" font-weight="500" fill="#cbd5e1">챗봇 UI &amp; 구매 가이드</text>
     </g>
   
     
-    <path d="M 380 255 C 440 255, 440 255, 486 255" fill="none" stroke="#94a3b8" stroke-width="3"/>
-    <path d="M 482 247 L 500 255 L 482 263" fill="none" stroke="#94a3b8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M 424 255 C 464 255, 464 255, 490 255" fill="none" stroke="#94a3b8" stroke-width="3"/>
+    <path d="M 486 247 L 504 255 L 486 263" fill="none" stroke="#94a3b8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
   
     
-    <path d="M 820 255 C 880 255, 880 255, 926 255" fill="none" stroke="#94a3b8" stroke-width="3"/>
-    <path d="M 922 247 L 940 255 L 922 263" fill="none" stroke="#94a3b8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M 864 255 C 904 255, 904 255, 930 255" fill="none" stroke="#94a3b8" stroke-width="3"/>
+    <path d="M 926 247 L 944 255 L 926 263" fill="none" stroke="#94a3b8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
   
     
-    <path d="M 225 340 L 225 444" fill="none" stroke="#94a3b8" stroke-width="3"/>
-    <path d="M 217 442 L 225 460 L 233 442" fill="none" stroke="#94a3b8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M 244 360 L 244 424" fill="none" stroke="#94a3b8" stroke-width="3"/>
+    <path d="M 236 422 L 244 440 L 252 422" fill="none" stroke="#94a3b8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
   
     
-    <path d="M 380 545 C 440 545, 440 545, 486 545" fill="none" stroke="#94a3b8" stroke-width="3"/>
-    <path d="M 482 537 L 500 545 L 482 553" fill="none" stroke="#94a3b8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M 424 545 C 464 545, 464 545, 490 545" fill="none" stroke="#94a3b8" stroke-width="3"/>
+    <path d="M 486 537 L 504 545 L 486 553" fill="none" stroke="#94a3b8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
   
     
-    <path d="M 820 545 C 880 545, 880 545, 926 545" fill="none" stroke="#94a3b8" stroke-width="3"/>
-    <path d="M 922 537 L 940 545 L 922 553" fill="none" stroke="#94a3b8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M 864 545 C 904 545, 904 545, 930 545" fill="none" stroke="#94a3b8" stroke-width="3"/>
+    <path d="M 926 537 L 944 545 L 926 553" fill="none" stroke="#94a3b8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
   
     
-    <path d="M 660 360 L 660 424" fill="none" stroke="#94a3b8" stroke-width="3"/>
-    <path d="M 652 422 L 660 440 L 668 422" fill="none" stroke="#94a3b8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M 684 360 L 684 424" fill="none" stroke="#94a3b8" stroke-width="3"/>
+    <path d="M 676 422 L 684 440 L 692 422" fill="none" stroke="#94a3b8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
   
     
-    <path d="M 1120 360 C 1120 360, 1120 440, 1106 440" fill="none" stroke="#94a3b8" stroke-width="3"/>
-    <path d="M 1102 432 L 1120 440 L 1102 448" fill="none" stroke="#94a3b8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M 1124 360 C 1124 360, 1124 440, 1110 440" fill="none" stroke="#94a3b8" stroke-width="3"/>
+    <path d="M 1106 432 L 1124 440 L 1106 448" fill="none" stroke="#94a3b8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
   
   
     </g>

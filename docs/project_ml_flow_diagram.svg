@@ -24,8 +24,8 @@
         <circle cx="112" cy="216" r="23" fill="#38bdf8"/>
         <text x="112" y="224" font-size="22" font-weight="900" fill="#08111f" text-anchor="middle">1</text>
         <text x="146" y="222" font-size="23" font-weight="850" fill="#f8fafc">데이터 수집</text>
-        <text x="104" y="268" font-size="19" font-weight="500" fill="#cbd5e1">실거래가 API와 입주예정</text>
-<text x="104" y="296" font-size="19" font-weight="500" fill="#cbd5e1">CSV를 확보</text>
+        <text x="104" y="268" font-size="19" font-weight="500" fill="#cbd5e1">실거래가 API, 입주예정,</text>
+<text x="104" y="296" font-size="19" font-weight="500" fill="#cbd5e1">대수선, 업체 수집</text>
       </g>
     
 
@@ -34,8 +34,8 @@
         <circle cx="434" cy="216" r="23" fill="#38bdf8"/>
         <text x="434" y="224" font-size="22" font-weight="900" fill="#08111f" text-anchor="middle">2</text>
         <text x="468" y="222" font-size="23" font-weight="850" fill="#f8fafc">정제/표준화</text>
-        <text x="426" y="268" font-size="19" font-weight="500" fill="#cbd5e1">금액·면적·건축연도 숫자화,</text>
-<text x="426" y="296" font-size="19" font-weight="500" fill="#cbd5e1">지역명 정규화</text>
+        <text x="426" y="268" font-size="19" font-weight="500" fill="#cbd5e1">금액·면적·연식 수치화, 행정구역</text>
+<text x="426" y="296" font-size="19" font-weight="500" fill="#cbd5e1">정규화</text>
       </g>
     
 
@@ -44,7 +44,8 @@
         <circle cx="756" cy="216" r="23" fill="#38bdf8"/>
         <text x="756" y="224" font-size="22" font-weight="900" fill="#08111f" text-anchor="middle">3</text>
         <text x="790" y="222" font-size="23" font-weight="850" fill="#f8fafc">피처 엔지니어링</text>
-        <text x="748" y="268" font-size="19" font-weight="500" fill="#cbd5e1">연식 계산, 아파트 세그먼트 분류</text>
+        <text x="748" y="268" font-size="19" font-weight="500" fill="#cbd5e1">노후도 계산 및 아파트 4대</text>
+<text x="748" y="296" font-size="19" font-weight="500" fill="#cbd5e1">세그먼트 분류</text>
       </g>
     
 
@@ -53,8 +54,8 @@
         <circle cx="1078" cy="216" r="23" fill="#38bdf8"/>
         <text x="1078" y="224" font-size="22" font-weight="900" fill="#08111f" text-anchor="middle">4</text>
         <text x="1112" y="222" font-size="23" font-weight="850" fill="#f8fafc">지역 집계</text>
-        <text x="1070" y="268" font-size="19" font-weight="500" fill="#cbd5e1">시도/시군구별 거래건수,</text>
-<text x="1070" y="296" font-size="19" font-weight="500" fill="#cbd5e1">평균금액, 평균연식 집계</text>
+        <text x="1070" y="268" font-size="19" font-weight="500" fill="#cbd5e1">시군구별 거래건수, 평균노후도,</text>
+<text x="1070" y="296" font-size="19" font-weight="500" fill="#cbd5e1">업체수 등 집계</text>
       </g>
     
 
@@ -63,7 +64,7 @@
         <circle cx="112" cy="471" r="23" fill="#38bdf8"/>
         <text x="112" y="479" font-size="22" font-weight="900" fill="#08111f" text-anchor="middle">5</text>
         <text x="146" y="477" font-size="23" font-weight="850" fill="#f8fafc">공급 데이터 결합</text>
-        <text x="104" y="523" font-size="19" font-weight="500" fill="#cbd5e1">신규 입주 물량을 지역 단위로</text>
+        <text x="104" y="523" font-size="19" font-weight="500" fill="#cbd5e1">신규 입주예정 물량을 시군구 단위</text>
 <text x="104" y="551" font-size="19" font-weight="500" fill="#cbd5e1">LEFT JOIN</text>
       </g>
     
@@ -73,8 +74,8 @@
         <circle cx="434" cy="471" r="23" fill="#f97316"/>
         <text x="434" y="479" font-size="22" font-weight="900" fill="#08111f" text-anchor="middle">6</text>
         <text x="468" y="477" font-size="23" font-weight="850" fill="#f8fafc">수요 점수화</text>
-        <text x="426" y="523" font-size="19" font-weight="500" fill="#cbd5e1">5개 지표 Min-Max 정규화</text>
-<text x="426" y="551" font-size="19" font-weight="500" fill="#cbd5e1">후 가중합</text>
+        <text x="426" y="523" font-size="19" font-weight="500" fill="#cbd5e1">7개 핵심 지표 Min-Max</text>
+<text x="426" y="551" font-size="19" font-weight="500" fill="#cbd5e1">정규화 및 가중합</text>
       </g>
     
 
@@ -83,8 +84,8 @@
         <circle cx="756" cy="471" r="23" fill="#f97316"/>
         <text x="756" y="479" font-size="22" font-weight="900" fill="#08111f" text-anchor="middle">7</text>
         <text x="790" y="477" font-size="23" font-weight="850" fill="#f8fafc">등급/랭킹</text>
-        <text x="748" y="523" font-size="19" font-weight="500" fill="#cbd5e1">S/A/B 등급과 TOP 지역</text>
-<text x="748" y="551" font-size="19" font-weight="500" fill="#cbd5e1">랭킹 생성</text>
+        <text x="748" y="523" font-size="19" font-weight="500" fill="#cbd5e1">수요 점수 기반 S/A/B 등급</text>
+<text x="748" y="551" font-size="19" font-weight="500" fill="#cbd5e1">부여 및 결과 저장</text>
       </g>
     
 
@@ -93,8 +94,8 @@
         <circle cx="1078" cy="471" r="23" fill="#f97316"/>
         <text x="1078" y="479" font-size="22" font-weight="900" fill="#08111f" text-anchor="middle">8</text>
         <text x="1112" y="477" font-size="23" font-weight="850" fill="#f8fafc">대시보드 제공</text>
-        <text x="1070" y="523" font-size="19" font-weight="500" fill="#cbd5e1">KPI, 차트, 검색, 지역</text>
-<text x="1070" y="551" font-size="19" font-weight="500" fill="#cbd5e1">필터로 시각화</text>
+        <text x="1070" y="523" font-size="19" font-weight="500" fill="#cbd5e1">지도 마커, 차트, 검색 필터,</text>
+<text x="1070" y="551" font-size="19" font-weight="500" fill="#cbd5e1">LLM 챗봇 연동</text>
       </g>
     
     
@@ -125,9 +126,9 @@
   
   
     <g>
-      <rect x="270" y="660" width="828" height="52" rx="14" fill="#0f172a" stroke="#25364d" stroke-width="2"/>
-      <text x="684" y="694" font-size="20" font-weight="800" fill="#e2e8f0" text-anchor="middle">
-        수요점수 = 거래건수 30% + 거래금액 25% + 연식 20% + 면적 15% + 신규입주 10%
+      <rect x="184" y="660" width="1000" height="52" rx="14" fill="#0f172a" stroke="#25364d" stroke-width="2"/>
+      <text x="684" y="694" font-size="19" font-weight="800" fill="#e2e8f0" text-anchor="middle">
+        수요점수 = 거래건수 20% + 전월세 20% + 거래금액 15% + 노후도 15% + 면적 10% + 신규입주 10% + 대수선 10%
       </text>
     </g>
   
