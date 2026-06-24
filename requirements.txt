@@ -6,3 +6,9 @@ python-dateutil
 python-dotenv
 PublicDataReader
 jupyter
+ipykernel
+matplotlib
+scikit-learn
+statsmodels
+prophet
+lightgbm

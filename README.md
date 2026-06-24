@@ -164,7 +164,8 @@ O2O-Demand-Forecasting-Solution/
 ├── notebooks/
 │   ├── 01_EDA_and_Hypothesis.ipynb               # 탐색적 데이터 분석
 │   ├── 02_Pipeline_and_DemandScore.ipynb         # 파이프라인 실행 & 수요 점수 시각화
-│   └── 03_API_Collection.ipynb                   # API 수집 & 파이프라인 실행
+│   ├── 03_API_Collection.ipynb                   # API 수집 & 파이프라인 실행
+│   └── 04_TimeSeries_Forecasting.ipynb           # 월별 거래량 시계열 예측 (SARIMA/Prophet/LightGBM 비교)
 │
 ├── src/
 │   ├── collector.py                              # ★ 공공데이터 API 자동 수집 모듈 (매매/전월세/대수선/인테리어업체)
@@ -564,6 +565,8 @@ CHAT_MODEL=qwen2.5:3b
 |---|---|
 | `01_EDA_and_Hypothesis.ipynb` | 데이터 탐색, 분포 확인, 가설 수립 |
 | `02_Pipeline_and_DemandScore.ipynb` | 파이프라인 실행, 수요 점수 산출, 시각화 |
+| `03_API_Collection.ipynb` | API 수집 & 파이프라인 실행 |
+| `04_TimeSeries_Forecasting.ipynb` | 전국 월별 아파트 매매 거래건수(11개월)를 SARIMA·Prophet·LightGBM으로 예측해 MAPE 기준 비교. 데이터 기간이 짧아 계절성 추정에 한계가 있다는 점도 노트북 안에 명시 |
 
 ---
 
