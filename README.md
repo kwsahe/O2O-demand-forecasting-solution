@@ -176,10 +176,12 @@ O2O-Demand-Forecasting-Solution/
 ├── collect_renovation.py                         # 대수선 이력 수집 스크립트
 ├── collect_interior_companies.py                 # 인테리어업체 데이터 수집 스크립트 (활용신청 필요)
 ├── collect_interior_stores.py                    # 소상공인 상가정보 기반 인테리어 관련 상가 수집 스크립트 (활용신청 필요)
+├── analyze_timeseries.py                         # 월별 거래량 SARIMA/Prophet/LightGBM 비교 스크립트 → timeseries_forecast_result.json 생성
 │
 ├── templates/
 │   ├── index.html                                # 메인 대시보드 (소개 카드, 지도, 랭킹, 챗봇)
 │   ├── analytics.html                            # 통계·분석 2페이지 (차트/테이블 모음)
+│   ├── forecast.html                             # 수요 예측 탭 (SARIMA/Prophet/LightGBM 비교)
 │   └── guide.html                                # 구매 가이드 탭 (절차 안내 + 가이드 전용 챗봇)
 │
 ├── app.py                                        # ★ Flask 웹 서버 (대시보드 + API + 챗봇 2종)
@@ -364,11 +366,13 @@ python app.py
 |---|---|---|
 | `GET` | `/` | 메인 대시보드 (`templates/index.html`) — 소개 카드, KPI, 차트, 네이버 지도, 랭킹 테이블, 챗봇 |
 | `GET` | `/analytics` | 통계·분석 2페이지 — 시도별/지역별 차트·테이블 모음 (`templates/analytics.html`) |
+| `GET` | `/forecast` | 수요 예측 탭 — 월별 거래량 SARIMA/Prophet/LightGBM 비교 (`templates/forecast.html`) |
 | `GET` | `/guide` | 구매 가이드 탭 — 첫 집 구매 절차 안내 + 가이드 전용 챗봇 (`templates/guide.html`) |
 | `GET` | `/health` | 서버 상태 확인 |
 | `GET` | `/api/demand` | 인테리어 수요 점수 결과 조회 (`sido`, `top` 쿼리 파라미터로 필터링) |
 | `GET` | `/api/sido-summary` | 시도별 수요 점수 요약 조회 |
 | `GET` | `/api/map-data` | 네이버 지도 마커용 데이터 — 102개 시군구 좌표 + 수요 점수/등급/지표 |
+| `GET` | `/api/forecast` | `analyze_timeseries.py` 실행 결과(`data/timeseries_forecast_result.json`) 조회 — 월별 실제 거래량, 모델별 예측값·MAPE |
 | `POST` | `/api/collect` | 공공데이터 API로 실거래가 수집 후 파이프라인 재실행 (`months`, `sigungu_code` 파라미터) |
 | `GET` | `/api/search` | 단지명(`type=apt`) 또는 지역명(`type=region`) 검색 (`q` 파라미터) |
 | `POST` | `/api/chat` | 수요 점수 데이터 기반 AI 챗봇 (`message` 파라미터, `chat_type='demand'`로 `data/chat_history.db`에 기록) |
@@ -469,6 +473,7 @@ CHAT_MODEL=qwen2.5:3b
 | `소상공인_인테리어업체수` | 소상공인시장진흥공단 상가(상권)정보 | 인테리어 디자인업·건축자재/가구 소매·건축설계 등 7개 업종 기준, **102개 시군구 전체 커버** |
 | `예상시공비_하한_만원` / `예상시공비_상한_만원` | 자체 추정 (`devlog/interior_cost_reference.md` 기준) | 평균 면적을 평으로 환산 후 올수리 평당 150만원(하한) ~ 220만원(상한, 노후도 20년+ 는 300만원) 적용 |
 | `시장규모_추정_억` | 자체 추정 | 거래건수 × 예상 시공비 중간값 ÷ 10,000 |
+| `총인구수` / `청년인구비율` / `고령인구비율` | 행정안전부 연령별 인구현황 | 시군구 단위 총인구·20~30대 비율·60대 이상 비율(%). 신혼/1인가구 vs 시니어 인테리어 수요 참고용 |
 
 > `인테리어업체수`(전국표준데이터)는 등록 누락 지역이 많아 신뢰도가 낮으므로, 업체/경쟁 밀도를
 > 참고할 때는 전 지역이 커버되는 `소상공인_인테리어업체수`를 우선 사용하는 것을 권장합니다.
@@ -580,4 +585,5 @@ CHAT_MODEL=qwen2.5:3b
 | 대수선 이력 | 건축데이터 민간개방시스템(건축HUB) ArchPmsHubService | API 자동 수집 (`collect_renovation.py`) |
 | 인테리어업체 현황 (정보성 컬럼) | 공공데이터포털 전국인테리어업체표준데이터 | API 자동 수집 (`collect_interior_companies.py`, 활용신청 필요) |
 | 인테리어 관련 상가 현황 (정보성 컬럼, 전 지역 커버) | 공공데이터포털 소상공인시장진흥공단 상가(상권)정보 | API 자동 수집 (`collect_interior_stores.py`, 활용신청 필요) |
+| 연령별 인구현황 (정보성 컬럼, 전 지역 커버) | [행정안전부 지역별 연령별 주민등록 인구현황](https://www.data.go.kr/data/3033304/fileData.do) | CSV 수동 다운로드 (`data/202605_202605_연령별인구현황_월간_전체시군구현황.csv`) |
 | 시군구 중심 좌표 | 정적 매핑 테이블 (`data/sigungu_coordinates.csv`) | 수동 작성 |

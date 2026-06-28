@@ -422,6 +422,7 @@
         <nav style="display:flex;gap:6px;">
             <a href="/" class="nav-link active">대시보드</a>
             <a href="/analytics" class="nav-link">통계·분석</a>
+            <a href="/forecast" class="nav-link">수요 예측</a>
             <a href="/guide" class="nav-link">구매 가이드</a>
         </nav>
         <!-- 데이터 기준 -->
@@ -1089,6 +1090,10 @@ function renderMap(data) {
                     <div style="display:flex;justify-content:space-between;margin-bottom:3px;"><span style="color:#888;">평균거래금액</span>${formatMoney(d.평균거래금액_만원)}원</div>
                     <div style="display:flex;justify-content:space-between;margin-bottom:3px;"><span style="color:#888;">평균면적</span>${formatArea(d.평균면적_m2)}</div>
                     <div style="display:flex;justify-content:space-between;margin-bottom:3px;"><span style="color:#888;">평균노후도</span>${d.평균노후도_년}년</div>
+                    <div style="border-top:1px solid rgba(255,255,255,.1);margin:5px 0;"></div>
+                    <div style="display:flex;justify-content:space-between;margin-bottom:3px;"><span style="color:#888;">총인구수</span>${(d.총인구수 || 0).toLocaleString()}명</div>
+                    <div style="display:flex;justify-content:space-between;margin-bottom:3px;"><span style="color:#888;">청년인구비율(20~30대)</span>${d.청년인구비율 || 0}%</div>
+                    <div style="display:flex;justify-content:space-between;margin-bottom:3px;"><span style="color:#888;">고령인구비율(60대+)</span>${d.고령인구비율 || 0}%</div>
                     <div style="border-top:1px solid rgba(255,255,255,.1);margin:5px 0;"></div>
                     <div style="display:flex;justify-content:space-between;margin-bottom:3px;"><span style="color:#888;">예상시공비</span><span style="color:#f0abfc;">${d.예상시공비_하한_만원 ? Math.round(d.예상시공비_하한_만원/100) + '~' + Math.round(d.예상시공비_상한_만원/100) + '백만원' : '—'}</span></div>
                     <div style="display:flex;justify-content:space-between;"><span style="color:#888;">시장규모 추정</span><span style="color:#f0abfc;">${d.시장규모_추정_억 ? d.시장규모_추정_억.toLocaleString() + '억원' : '—'}</span></div>

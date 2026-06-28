@@ -36,7 +36,7 @@ def extract_sido(address: str) -> str:
     for full, short in sido_map.items():
         if address.startswith(full):
             return short
-    return address.spliat()[0] if address else "Unknown"
+    return address.split()[0] if address else "Unknown"
 
 def classify_apartment(age: int) -> str:
     for seg, (lo, hi) in SEGMENT_RULES.items():
@@ -58,6 +58,7 @@ class DemandForecastingPipeline:
         rent_path: str = None,
         renovation_path: str = "data/raw_renovation_collected.csv",
         interior_company_path: str = "data/raw_interior_companies.csv",
+        population_path: str = "data/202605_202605_연령별인구현황_월간_전체시군구현황.csv",
         reference_year: int = REFERENCE_YEAR,
         supply_year_range: tuple = ("2025", "2026"),
         target_segment: str = "Old_Apartment",
@@ -68,6 +69,7 @@ class DemandForecastingPipeline:
         self.rent_path = rent_path
         self.renovation_path = renovation_path
         self.interior_company_path = interior_company_path
+        self.population_path = population_path
         self.reference_year = reference_year
         self.supply_year_range = supply_year_range
         self.target_segment = target_segment
@@ -78,6 +80,7 @@ class DemandForecastingPipeline:
         self.df_rent = None
         self.df_renovation = None
         self.df_interior_company = None
+        self.df_population = None
         self.df_processed = None
 
     def load_data(self, df_transactions = None, df_rent = None):
@@ -125,6 +128,16 @@ class DemandForecastingPipeline:
                 print("[LOAD] 인테리어업체 CSV 없음 (인테리어업체수는 0으로 처리됩니다)")
         else:
             self.df_interior_company = None
+
+        if self.population_path:
+            try:
+                self.df_population = pd.read_csv(self.population_path, encoding="cp949")
+                print(f"[LOAD] 인구통계 CSV 로드: {len(self.df_population):,}건")
+            except FileNotFoundError:
+                self.df_population = None
+                print("[LOAD] 인구통계 CSV 없음 (인구 지표는 0으로 처리됩니다)")
+        else:
+            self.df_population = None
         return self
     
     def preprocess_transactions(self):
@@ -280,6 +293,54 @@ class DemandForecastingPipeline:
         print(f"[PREPROCESS] 인테리어업체 정제 완료: {len(df):,}건 (시군구 매칭됨)")
         return self
 
+    def preprocess_population(self):
+        """행정안전부 연령별 인구현황(시군구 단위) 정제.
+        '행정구역' 컬럼은 시도 전체("서울특별시")/시도+시군구("경기도 수원시")/
+        시도+시+구("경기도 수원시 장안구")가 계층적으로 섞여 있음 — 공백 2토큰(시도+시군구)
+        행만 골라내면 파이프라인의 102개 시군구 단위와 정확히 일치한다."""
+        if self.df_population is None or self.df_population.empty:
+            self.df_population = None
+            print("[PREPROCESS] 인구통계 데이터 없음 (인구 지표는 0으로 처리됩니다)")
+            return self
+
+        df = self.df_population.copy()
+        df.columns = [c.strip() for c in df.columns]
+
+        def find_col(suffix):
+            return next(c for c in df.columns if c.endswith(suffix))
+
+        col_total = find_col("_계_총인구수")
+        col_20 = find_col("_계_20~29세")
+        col_30 = find_col("_계_30~39세")
+        col_60 = find_col("_계_60~69세")
+        col_70 = find_col("_계_70~79세")
+        col_80 = find_col("_계_80~89세")
+        col_90 = find_col("_계_90~99세")
+        col_100 = find_col("_계_100세 이상")
+
+        for c in [col_total, col_20, col_30, col_60, col_70, col_80, col_90, col_100]:
+            df[c] = pd.to_numeric(df[c].astype(str).str.replace(",", ""), errors="coerce").fillna(0)
+
+        df["행정구역_정제"] = df["행정구역"].str.replace(r"\s*\(\d+\)", "", regex=True).str.strip()
+        tokens = df["행정구역_정제"].str.split()
+        df = df[tokens.apply(len) == 2].copy()
+
+        df["시도"] = df["행정구역_정제"].apply(lambda x: extract_sido(x.split()[0]))
+        df["시군구_코드"] = df["행정구역_정제"].apply(lambda x: x.split()[1])
+        df["총인구수"] = df[col_total]
+        df["청년인구비율"] = np.where(
+            df[col_total] > 0, ((df[col_20] + df[col_30]) / df[col_total] * 100).round(1), 0
+        )
+        df["고령인구비율"] = np.where(
+            df[col_total] > 0,
+            ((df[col_60] + df[col_70] + df[col_80] + df[col_90] + df[col_100]) / df[col_total] * 100).round(1),
+            0,
+        )
+
+        self.df_population = df[["시도", "시군구_코드", "총인구수", "청년인구비율", "고령인구비율"]]
+        print(f"[PREPROCESS] 인구통계 정제 완료: {len(self.df_population):,}개 시군구")
+        return self
+
     def preprocess_supply(self):
         df = self.df_supply.copy()
         df["세대수"] = pd.to_numeric(df["세대수"], errors="coerce").fillna(0)
@@ -362,6 +423,16 @@ class DemandForecastingPipeline:
         else:
             df["인테리어업체수"] = 0
 
+        if self.df_population is not None and not self.df_population.empty:
+            df = pd.merge(df, self.df_population, on=["시도", "시군구_코드"], how="left")
+            df["총인구수"] = df["총인구수"].fillna(0)
+            df["청년인구비율"] = df["청년인구비율"].fillna(0)
+            df["고령인구비율"] = df["고령인구비율"].fillna(0)
+        else:
+            df["총인구수"] = 0
+            df["청년인구비율"] = 0
+            df["고령인구비율"] = 0
+
         self.df_processed = df
         print(f"[MERGE] 집계 완료: {len(df):,}개 시군구")
         return self
@@ -400,6 +471,7 @@ class DemandForecastingPipeline:
             "시도", "시군구_코드",
             "거래건수", "평균거래금액", "평균노후도", "평균면적",
             "신규입주", "입주단지", "전월세거래건수", "대수선이력건수", "인테리어업체수",
+            "총인구수", "청년인구비율", "고령인구비율",
             "인테리어_수요점수",
         ]
         df_result = self.df_processed[result_cols].copy()
@@ -407,6 +479,7 @@ class DemandForecastingPipeline:
             "시도", "시군구",
             "거래건수", "평균거래금액_만원", "평균노후도_년", "평균면적_m2",
             "신규입주_세대수", "입주단지수", "전월세거래건수", "대수선이력건수", "인테리어업체수",
+            "총인구수", "청년인구비율", "고령인구비율",
             "인테리어_수요점수",
         ]
 
@@ -453,6 +526,7 @@ class DemandForecastingPipeline:
             .preprocess_rent()
             .preprocess_renovation()
             .preprocess_interior_company()
+            .preprocess_population()
             .preprocess_supply()
             .aggregate_and_merge()
             .calculate_demand_score()

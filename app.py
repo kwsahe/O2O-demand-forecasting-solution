@@ -1,8 +1,10 @@
+# 실행: venv 활성화 후 `python app.py` (http://localhost:8300)
 from flask import Flask, jsonify, request, render_template
 from dotenv import load_dotenv
 import pandas as pd
 import os
 import sys
+import json
 import sqlite3
 from datetime import datetime
 import requests
@@ -81,9 +83,27 @@ def guide():
     return render_template("guide.html")
 
 
+@app.route("/forecast")
+def forecast():
+    return render_template("forecast.html")
+
+
 @app.route("/health")
 def health():
     return jsonify({"status": "ok"})
+
+
+@app.route("/api/forecast", methods=["GET"])
+def get_forecast():
+    try:
+        with open("data/timeseries_forecast_result.json", encoding="utf-8") as f:
+            result = json.load(f)
+        return jsonify({"status": "ok", **result})
+    except FileNotFoundError:
+        return jsonify({
+            "status": "error",
+            "message": "예측 결과 파일이 없습니다. analyze_timeseries.py를 먼저 실행하세요.",
+        }), 404
 
 @app.route("/api/demand", methods=["GET"])
 def get_demand():
@@ -455,7 +475,12 @@ def chat():
             "300만원)을 적용한 비공식 참고용 추정치입니다. '예상 시공비', '평당 비용', '인테리어 비용'을 물으면 "
             "이 두 값을 범위로 안내하세요.\n"
             "- 시장규모_추정_억: 거래건수 × 예상 시공비 중간값으로 추정한 해당 시군구의 인테리어 시장 규모(억원). "
-            "'시장 규모', '시장이 얼마나 큰지'를 물으면 이 값을 사용하세요.\n\n"
+            "'시장 규모', '시장이 얼마나 큰지'를 물으면 이 값을 사용하세요.\n"
+            "- 총인구수: 행정안전부 주민등록 인구통계 기준 해당 시군구의 총인구수(명).\n"
+            "- 청년인구비율: 해당 시군구 인구 중 20~30대(20~39세) 비율(%). 비율이 높을수록 신혼·1인가구 등 "
+            "소형 평수 인테리어 수요가 상대적으로 많을 것으로 참고할 수 있는 지표입니다.\n"
+            "- 고령인구비율: 해당 시군구 인구 중 60대 이상(60세+) 비율(%). 비율이 높으면 안전바·미끄럼방지 등 "
+            "시니어 친화적 인테리어 수요를 참고할 수 있는 지표입니다.\n\n"
             "[데이터 컬럼 설명 — 시도별 요약 표]\n"
             "- 시군구수: 해당 시/도에 속한 시군구의 개수\n"
             "- 총거래건수: 해당 시/도에 속한 모든 시군구 거래건수의 합계\n"

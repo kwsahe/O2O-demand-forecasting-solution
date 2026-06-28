@@ -224,6 +224,7 @@
         <nav style="display:flex;gap:6px;">
             <a href="/" class="nav-link">대시보드</a>
             <a href="/analytics" class="nav-link active">통계·분석</a>
+            <a href="/forecast" class="nav-link">수요 예측</a>
             <a href="/guide" class="nav-link">구매 가이드</a>
         </nav>
         <!-- 데이터 기준 -->
@@ -307,6 +308,41 @@
         <div class="kpi-value" id="kpi8">—</div>
         <div class="kpi-sub" id="kpi8Sub">거래건수 × 예상 시공비 추정</div>
         <div class="kpi-bar" style="background:var(--accent2);"></div>
+    </div>
+</div>
+
+<!-- ── 인구 통계 KPI 행 ── -->
+<div style="grid-column:1/-1;" class="anim-4">
+    <div class="section-label">분석 지역 인구 통계 (행정안전부 연령별 인구현황)</div>
+</div>
+<div id="population-kpi-row" style="grid-column:1/-1;display:grid;grid-template-columns:repeat(4,1fr);gap:16px;">
+    <div class="card kpi-card anim-4">
+        <div class="kpi-icon">👥</div>
+        <div class="kpi-label">분석 지역 총인구 합계</div>
+        <div class="kpi-value" id="kpi9">—</div>
+        <div class="kpi-sub">102개 시군구 인구 합계</div>
+        <div class="kpi-bar" style="background:var(--purple);"></div>
+    </div>
+    <div class="card kpi-card anim-5">
+        <div class="kpi-icon">🧑</div>
+        <div class="kpi-label">평균 청년인구비율</div>
+        <div class="kpi-value" id="kpi10">—</div>
+        <div class="kpi-sub" id="kpi10Sub">20~30대 비율 (소형 인테리어 수요 참고)</div>
+        <div class="kpi-bar" style="background:var(--blue);"></div>
+    </div>
+    <div class="card kpi-card anim-5">
+        <div class="kpi-icon">🧓</div>
+        <div class="kpi-label">평균 고령인구비율</div>
+        <div class="kpi-value" id="kpi11">—</div>
+        <div class="kpi-sub" id="kpi11Sub">60대 이상 비율</div>
+        <div class="kpi-bar" style="background:var(--green);"></div>
+    </div>
+    <div class="card kpi-card anim-5">
+        <div class="kpi-icon">🏙️</div>
+        <div class="kpi-label">최다 인구 시군구</div>
+        <div class="kpi-value" id="kpi12" style="font-size:22px;">—</div>
+        <div class="kpi-sub" id="kpi12Sub">—</div>
+        <div class="kpi-bar" style="background:var(--red);"></div>
     </div>
 </div>
 
@@ -498,6 +534,26 @@ function updateKPI(data, sidoData) {
     document.getElementById('kpi8Sub').textContent = topMarket
         ? `1위: ${regionLabel(topMarket)} (${(topMarket.시장규모_추정_억 || 0).toLocaleString()}억)`
         : '거래건수 × 예상 시공비 추정';
+
+    // 인구 통계
+    const totalPopulation = data.reduce((s, d) => s + (d.총인구수 || 0), 0);
+    document.getElementById('kpi9').textContent = totalPopulation.toLocaleString() + '명';
+
+    const avgYouthRatio = data.reduce((s, d) => s + (d.청년인구비율 || 0), 0) / data.length;
+    document.getElementById('kpi10').textContent = isNaN(avgYouthRatio) ? '—' : avgYouthRatio.toFixed(1) + '%';
+    const topYouth = [...data].sort((a, b) => (b.청년인구비율 || 0) - (a.청년인구비율 || 0))[0];
+    if (topYouth) document.getElementById('kpi10Sub').textContent = `최고: ${regionLabel(topYouth)} (${topYouth.청년인구비율}%)`;
+
+    const avgSeniorRatio = data.reduce((s, d) => s + (d.고령인구비율 || 0), 0) / data.length;
+    document.getElementById('kpi11').textContent = isNaN(avgSeniorRatio) ? '—' : avgSeniorRatio.toFixed(1) + '%';
+    const topSenior = [...data].sort((a, b) => (b.고령인구비율 || 0) - (a.고령인구비율 || 0))[0];
+    if (topSenior) document.getElementById('kpi11Sub').textContent = `최고: ${regionLabel(topSenior)} (${topSenior.고령인구비율}%)`;
+
+    const topPop = [...data].sort((a, b) => (b.총인구수 || 0) - (a.총인구수 || 0))[0];
+    if (topPop) {
+        document.getElementById('kpi12').textContent = regionLabel(topPop);
+        document.getElementById('kpi12Sub').textContent = `${(topPop.총인구수 || 0).toLocaleString()}명`;
+    }
 }
 
 // ── 시도별 평균/최고 수요점수
