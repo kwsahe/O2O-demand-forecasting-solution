@@ -2,6 +2,9 @@
 data/*.csv
 data/*.db
 
+# 작업 중 디버그 산출물 (임시 텍스트/스크린샷)
+data/_*
+
 # Python 캐시
 __pycache__/
 *.pyc

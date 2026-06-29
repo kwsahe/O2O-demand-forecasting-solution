@@ -342,6 +342,18 @@
     </ul>
 </div>
 
+<!-- ── AI 판단 결과 ── -->
+<div id="ai-judgment-card" class="card anim-5" style="grid-column:1/-1;padding:24px 28px;">
+    <div class="section-label">🤖 AI 판단 결과</div>
+    <div id="aiJudgmentBody" style="font-size:13px;color:var(--text);line-height:1.9;background:var(--surface2);border-left:3px solid var(--purple);border-radius:0 10px 10px 0;padding:16px 20px;white-space:pre-line;">
+        불러오는 중...
+    </div>
+    <div style="margin-top:10px;font-size:11px;color:var(--muted);">
+        ⚠️ 위 [확정된 데이터] 표의 숫자만 근거로 로컬 LLM(qwen2.5:3b)이 작성한 해설입니다. 추세 해석은 참고용이며,
+        분석/투자 판단의 근거로 단독 사용하지 마세요. <code>analyze_timeseries.py</code> 재실행 시 갱신됩니다.
+    </div>
+</div>
+
 </main>
 
 <!-- ══════════════════════════════ FOOTER ══════════════════════════════ -->
@@ -403,6 +415,17 @@ function renderAll(data) {
     renderMapeChart(data);
     renderResultTable(data);
     renderConclusion(data);
+    renderAiJudgment(data);
+}
+
+function renderAiJudgment(data) {
+    const el = document.getElementById('aiJudgmentBody');
+    if (data.ai_judgment) {
+        el.textContent = data.ai_judgment;
+    } else {
+        el.innerHTML = '<span style="color:var(--muted);">AI 판단 결과가 아직 생성되지 않았습니다. ' +
+            '서버에서 <code>analyze_timeseries.py</code>를 실행할 때 Ollama가 켜져 있어야 생성됩니다.</span>';
+    }
 }
 
 let forecastChartInst = null;

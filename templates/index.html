@@ -793,6 +793,36 @@
     </div>
 </div>
 
+<!-- ── 지역 비교 ── -->
+<div id="compare-card" class="card anim-6" style="grid-column:1/-1;padding:22px;">
+    <div class="section-label">🆚 지역 비교 — 최대 3개 시군구</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:18px;">
+        <input id="compareInput1" class="search-input" list="compareRegionList" placeholder="지역 1 (예: 서울 서초구)" oninput="updateCompare()">
+        <input id="compareInput2" class="search-input" list="compareRegionList" placeholder="지역 2 (예: 경기 용인시)" oninput="updateCompare()">
+        <input id="compareInput3" class="search-input" list="compareRegionList" placeholder="지역 3 (선택)" oninput="updateCompare()">
+        <datalist id="compareRegionList"></datalist>
+    </div>
+    <div id="compareEmpty" style="font-size:12.5px;color:var(--muted);text-align:center;padding:30px 0;">
+        위 입력칸에 비교할 지역을 2개 이상 입력하면 레이더 차트와 상세 비교표가 표시됩니다.
+    </div>
+    <div id="compareResult" style="display:none;">
+        <div style="display:grid;grid-template-columns:1fr 1.4fr;gap:20px;margin-bottom:20px;align-items:center;">
+            <div style="position:relative;height:300px;">
+                <canvas id="compareRadarChart"></canvas>
+            </div>
+            <div id="compareLegend" style="font-size:12px;color:var(--text2);line-height:1.8;"></div>
+        </div>
+        <div style="overflow-x:auto;">
+            <table class="rank-table">
+                <thead>
+                    <tr id="compareTableHead"></tr>
+                </thead>
+                <tbody id="compareTableBody"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
 <!-- ── 랭킹 테이블 ── -->
 <div id="rank-table-card" class="card anim-7" style="grid-column:1/-1;padding:22px;">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px;">
@@ -949,11 +979,12 @@ Chart.defaults.font.family = "'DM Mono', monospace";
 // ── 데이터 로드
 async function loadData() {
     try {
-        const res = await fetch('/api/demand?top=100');
+        const res = await fetch('/api/demand?top=200');
         const json = await res.json();
         allData = json.data;
         filteredData = allData;
         renderAll(allData);
+        populateCompareList(allData);
     } catch (e) {
         console.error('데이터 로드 실패:', e);
     }
@@ -1115,6 +1146,133 @@ function renderAll(data) {
     document.getElementById('tableInfo').textContent = `${data.length}개 지역`;
     document.getElementById('totalTxCount').textContent =
         PIE_TOTALS.reduce((a, b) => a + b, 0).toLocaleString();
+}
+
+// ══════════════════════════════ 지역 비교 ══════════════════════════════
+const COMPARE_COLORS = ['#f97316', '#38bdf8', '#34d399'];
+let compareRadarInst = null;
+
+function compareRegionLabel(d) {
+    return `${d.시도} ${d.시군구}`;
+}
+
+function populateCompareList(data) {
+    const list = document.getElementById('compareRegionList');
+    list.innerHTML = data.map(d => `<option value="${compareRegionLabel(d)}"></option>`).join('');
+}
+
+function findCompareRegion(text) {
+    const t = (text || '').trim();
+    if (!t) return null;
+    return allData.find(d => compareRegionLabel(d) === t) ||
+        allData.find(d => d.시군구 === t) ||
+        null;
+}
+
+function updateCompare() {
+    const inputs = ['compareInput1', 'compareInput2', 'compareInput3']
+        .map(id => document.getElementById(id).value);
+    const regions = inputs.map(findCompareRegion).filter(Boolean);
+
+    const emptyEl = document.getElementById('compareEmpty');
+    const resultEl = document.getElementById('compareResult');
+
+    if (regions.length < 2) {
+        emptyEl.style.display = 'block';
+        resultEl.style.display = 'none';
+        return;
+    }
+    emptyEl.style.display = 'none';
+    resultEl.style.display = 'block';
+
+    renderCompareRadar(regions);
+    renderCompareTable(regions);
+}
+
+// 레이더 차트용 지표 — 지역 간 스케일이 다른 값들은 선택된 지역들 중 최댓값 기준으로 0~100 정규화
+const COMPARE_RADAR_METRICS = [
+    { key: '인테리어_수요점수', label: '수요점수', maxIsScore: true },
+    { key: '거래건수', label: '거래건수' },
+    { key: '전월세거래건수', label: '전월세거래건수' },
+    { key: '평균거래금액_만원', label: '거래금액' },
+    { key: '평균노후도_년', label: '노후도' },
+    { key: '대수선이력건수', label: '대수선이력' },
+];
+
+function renderCompareRadar(regions) {
+    const ctx = document.getElementById('compareRadarChart').getContext('2d');
+    if (compareRadarInst) compareRadarInst.destroy();
+
+    const datasets = regions.map((d, i) => {
+        const values = COMPARE_RADAR_METRICS.map(m => {
+            if (m.maxIsScore) return d[m.key] || 0;
+            const maxVal = Math.max(...regions.map(r => r[m.key] || 0), 1);
+            return ((d[m.key] || 0) / maxVal * 100);
+        });
+        return {
+            label: compareRegionLabel(d),
+            data: values,
+            borderColor: COMPARE_COLORS[i],
+            backgroundColor: COMPARE_COLORS[i] + '33',
+            pointBackgroundColor: COMPARE_COLORS[i],
+            borderWidth: 2,
+        };
+    });
+
+    compareRadarInst = new Chart(ctx, {
+        type: 'radar',
+        data: { labels: COMPARE_RADAR_METRICS.map(m => m.label), datasets },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'bottom', labels: { color: '#94a3b8', font: { size: 11 }, boxWidth: 10, boxHeight: 10 } },
+                tooltip: {
+                    backgroundColor: '#0d1626', borderColor: '#1e3050', borderWidth: 1,
+                    titleColor: '#e2e8f0', bodyColor: '#94a3b8', padding: 10,
+                },
+            },
+            scales: {
+                r: {
+                    angleLines: { color: 'rgba(30,48,80,.5)' },
+                    grid: { color: 'rgba(30,48,80,.5)' },
+                    pointLabels: { color: '#94a3b8', font: { size: 11 } },
+                    ticks: { display: false },
+                    min: 0, max: 100,
+                },
+            },
+        },
+    });
+}
+
+const COMPARE_TABLE_ROWS = [
+    { key: '인테리어_수요점수', label: '인테리어 수요점수', fmt: v => `${v}점` },
+    { key: '거래건수', label: '거래건수', fmt: v => `${(v || 0).toLocaleString()}건` },
+    { key: '전월세거래건수', label: '전월세거래건수', fmt: v => `${(v || 0).toLocaleString()}건` },
+    { key: '평균거래금액_만원', label: '평균거래금액', fmt: v => formatMoney(v) },
+    { key: '평균노후도_년', label: '평균노후도', fmt: v => `${v}년` },
+    { key: '평균면적_m2', label: '평균면적', fmt: v => formatArea(v) },
+    { key: '신규입주_세대수', label: '신규입주 세대수', fmt: v => `${(v || 0).toLocaleString()}세대` },
+    { key: '대수선이력건수', label: '대수선이력건수', fmt: v => `${(v || 0).toLocaleString()}건` },
+    { key: '소상공인_인테리어업체수', label: '인테리어 관련 상가수', fmt: v => `${(v || 0).toLocaleString()}개` },
+    { key: '예상시공비_하한_만원', label: '예상시공비', fmt: (v, d) => d.예상시공비_하한_만원 ? `${Math.round(d.예상시공비_하한_만원/100)}~${Math.round(d.예상시공비_상한_만원/100)}백만` : '—' },
+    { key: '시장규모_추정_억', label: '시장규모 추정', fmt: v => v ? `${v.toLocaleString()}억` : '—' },
+    { key: '총인구수', label: '총인구수', fmt: v => `${(v || 0).toLocaleString()}명` },
+    { key: '청년인구비율', label: '청년인구비율(20~30대)', fmt: v => `${v || 0}%` },
+    { key: '고령인구비율', label: '고령인구비율(60대+)', fmt: v => `${v || 0}%` },
+];
+
+function renderCompareTable(regions) {
+    const head = document.getElementById('compareTableHead');
+    head.innerHTML = '<th>지표</th>' + regions.map((d, i) =>
+        `<th style="color:${COMPARE_COLORS[i]};">${compareRegionLabel(d)}</th>`
+    ).join('');
+
+    const body = document.getElementById('compareTableBody');
+    body.innerHTML = COMPARE_TABLE_ROWS.map(row => {
+        const cells = regions.map(d => `<td style="font-family:var(--mono);color:var(--text2);">${row.fmt(d[row.key], d)}</td>`).join('');
+        return `<tr><td style="font-weight:500;">${row.label}</td>${cells}</tr>`;
+    }).join('');
 }
 
 // ── KPI
